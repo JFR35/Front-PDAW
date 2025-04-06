@@ -3,7 +3,7 @@
 </script>
 
 <template>
-  <div class="container py-4">
+  <div class="container-fluid py-4">
     <h1 class="mb-4">Dashboard</h1>
     <p class="lead">Bienvenido al panel de control.</p>
 

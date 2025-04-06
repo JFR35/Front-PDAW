@@ -24,7 +24,7 @@ const routes = [
         path: 'dashboard',
         name: 'dashboard',
         component: DashboardView,
-        meta: { requiresAuth: false }, // False para pruebas True con auth
+        meta: { requiresAuth: true }, // False para pruebas True con auth
       },
     ],
   },

@@ -1,9 +1,9 @@
 <script setup lang="ts"></script>
 
 <template>
-  <div class="auth-layout">
-    <AppHeader />
-    <!-- Solo muestra el contenido de la página -->
-    <router-view />
+  <div class="guest-layout">
+    <main>
+      <router-view />
+    </main>
   </div>
 </template>
