@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import { RouterView, useRouter } from 'vue-router'
-import { onMounted } from 'vue'
-import MainLayout from '@/layouts/MainLayout.vue'
-import BaseLayout from '@/layouts/BaseLayout.vue'
+import { onMounted, watch } from 'vue'
 
 const router = useRouter()
 
-onMounted(() => {
-  // Redirigir al dashboard si ya "estamos logueados" (simulación)
-  const isLoggedIn = false // Cambiar a true para simular login
-  if (isLoggedIn && router.currentRoute.value.path === '/login') {
-    router.push('/dashboard')
-  }
-})
+// Simulación de autenticación
+const isLoggedIn = false // Cambiar según tu estado real
+
+// Redirección basada en autenticación
+watch(
+  () => router.currentRoute.value,
+  (to) => {
+    if (isLoggedIn && to.name === 'login') {
+      router.push('/dashboard')
+    } else if (!isLoggedIn && to.meta.requiresAuth) {
+      router.push('/login')
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
-  <BaseLayout>
-    <MainLayout>
-      <RouterView />
-    </MainLayout>
-  </BaseLayout>
+  <RouterView />
 </template>
-
-<style scoped></style>
