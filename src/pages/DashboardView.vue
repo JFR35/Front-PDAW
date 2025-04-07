@@ -13,7 +13,7 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Citas Pendientes</h5>
             <p class="card-text">Aquí podrás ver tus próximas citas.</p>
-            <router-link to="/citas" class="btn btn-primary mt-auto">Ver Citas</router-link>
+            <router-link to="/dashboard/citas" class="btn btn-primary mt-auto">Ver Citas</router-link>
           </div>
         </div>
       </div>
@@ -22,7 +22,7 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Pacientes</h5>
             <p class="card-text">Gestiona la lista de tus pacientes.</p>
-            <router-link to="/pacientes" class="btn btn-primary mt-auto">Ver Pacientes</router-link>
+            <router-link to="/dashboard/pacientes" class="btn btn-primary mt-auto">Ver Pacientes</router-link>
           </div>
         </div>
       </div>
