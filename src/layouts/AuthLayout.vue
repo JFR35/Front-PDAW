@@ -23,6 +23,6 @@ import AppFooter from '@/components/AppFooter.vue'
 }
 
 .layout-content {
-  flex: 1; /* ocupa todo el espacio disponible */
+  flex: 1;
 }
 </style>
