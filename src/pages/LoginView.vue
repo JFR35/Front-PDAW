@@ -6,7 +6,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const handleLogin = () => {
-  auth.login() // Marca como Logado
+  auth.login('Juan') // Marca como Logado
   // Simulación de autenticación exitosa
   console.log('Login realizado')
   router.push('/dashboard')

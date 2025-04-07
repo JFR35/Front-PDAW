@@ -4,6 +4,8 @@ import GuestLayout from '@/layouts/GuestLayout.vue'
 import LoginView from '@/pages/LoginView.vue'
 import DashboardView from '@/pages/DashboardView.vue'
 import { useAuthStore } from '@/stores/auth'
+import PatientsView from '@/pages/PatientsView.vue'
+import AppoinmentView from '@/pages/AppoinmentView.vue'
 
 const routes = [
   {
@@ -27,6 +29,18 @@ const routes = [
         component: DashboardView,
         meta: { requiresAuth: true },
       },
+      {
+        path: 'citas',
+        name: 'citas',
+        component: AppoinmentView,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'pacientes',
+        name: 'pacientes',
+        component: PatientsView,
+        meta: { requiresAuth: true },
+      }
     ],
   },
   {
