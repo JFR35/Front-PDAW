@@ -1,5 +1,3 @@
-<script setup lang="ts"></script>
-
 <template>
   <div class="guest-layout">
     <main>
@@ -7,3 +5,5 @@
     </main>
   </div>
 </template>
+
+

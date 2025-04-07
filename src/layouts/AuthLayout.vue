@@ -24,5 +24,6 @@ import AppFooter from '@/components/AppFooter.vue'
 
 .layout-content {
   flex: 1;
+  padding: 20px; /* Espaciado opcional */
 }
 </style>

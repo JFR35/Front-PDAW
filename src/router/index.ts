@@ -4,9 +4,10 @@ import GuestLayout from '@/layouts/GuestLayout.vue'
 import LoginView from '@/pages/LoginView.vue'
 import DashboardView from '@/pages/DashboardView.vue'
 import { useAuthStore } from '@/stores/auth'
+
 const routes = [
   {
-    path: '/login',
+    path: '/',
     component: GuestLayout,
     children: [
       {
@@ -17,20 +18,20 @@ const routes = [
     ],
   },
   {
-    path: '/',
+    path: '/dashboard',
     component: AuthLayout,
     children: [
       {
-        path: 'dashboard',
+        path: '',
         name: 'dashboard',
         component: DashboardView,
-        meta: { requiresAuth: true }, // False para pruebas True con auth
+        meta: { requiresAuth: true },
       },
     ],
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/login',
+    redirect: '/',
   },
 ]
 
@@ -43,9 +44,9 @@ router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    next('/login')
+    next('/') // Redirige al login si no está autenticado
   } else if (to.name === 'login' && auth.isLoggedIn) {
-    next('/dashboard')
+    next('/dashboard') // Si ya está autenticado y va al login, redirige al dashboard
   } else {
     next()
   }
