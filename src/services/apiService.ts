@@ -7,6 +7,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
+  withCredentials: true,
   timeout: 10000,
 })
 // Interceptor para añadir el token a las peticiones protegidas

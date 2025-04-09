@@ -1,17 +1,32 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router' // Importación faltante
 
-const router = useRouter()
-const auth = useAuthStore()
+const authStore = useAuthStore()
+const router = useRouter() // Inicialización del router
+const email = ref('julianito@gmail.com')
+const password = ref('123ABCDE')
+const isLoading = ref(false)
+const errorMessage = ref('')
 
-const handleLogin = () => {
-  auth.login('Juanito') // Marca como Logado
-  // Simulación de autenticación exitosa
-  console.log('Login realizado')
-  router.push('/dashboard')
+const handleLogin = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  const success = await authStore.login(email.value, password.value)
+
+  if (success) {
+    // Redirige al dashboard o página principal
+    router.push('/dashboard')
+  } else {
+    errorMessage.value = 'Credenciales incorrectas'
+  }
+
+  isLoading.value = false
 }
 </script>
+
 <template>
   <div class="container-fluid vh-100 p-0 d-flex flex-column flex-md-row">
     <!-- Contenedor izquierdo (imagen con texto superpuesto) -->
@@ -41,6 +56,7 @@ const handleLogin = () => {
                 type="email"
                 class="form-control"
                 id="email"
+                v-model="email"
                 placeholder="tusuario@ejemplo.com"
                 required
               />
@@ -51,16 +67,24 @@ const handleLogin = () => {
                 type="password"
                 class="form-control"
                 id="password"
+                v-model="password"
                 placeholder="********"
                 required
               />
             </div>
+            <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
             <div class="d-grid">
-              <button type="submit" class="btn btn-primary btn-lg">Entrar</button>
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg"
+                :disabled="isLoading"
+              >
+                {{ isLoading ? 'Cargando...' : 'Entrar' }}
+              </button>
             </div>
             <div>
               <p class="mt-3 text-center">
-                <router-link to="/ForgotPassword">Olvidó su contraseña?</router-link>
+                <router-link to="/forgot-password">Olvidó su contraseña?</router-link>
               </p>
             </div>
           </form>
@@ -69,6 +93,7 @@ const handleLogin = () => {
     </div>
   </div>
 </template>
+
 <style scoped>
 img {
   object-fit: cover;
