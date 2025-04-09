@@ -6,6 +6,7 @@ import DashboardView from '@/pages/DashboardView.vue'
 import { useAuthStore } from '@/stores/auth'
 import PatientsView from '@/pages/PatientsView.vue'
 import AppoinmentView from '@/pages/AppoinmentView.vue'
+//import ForgotPassword from '@/pages/ForgotPassword.vue'
 
 const routes = [
   {
@@ -17,6 +18,13 @@ const routes = [
         name: 'login',
         component: LoginView,
       },
+      /*
+      {
+        path: '/ForgotPassword',
+        name: 'ForgotPassword',
+        component: ForgotPassword
+      }
+        */
     ],
   },
   {

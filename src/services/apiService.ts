@@ -2,13 +2,26 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8085/api',
+  /*axios.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('jwtToken')}`; Cuando haya JWT en la APIREST */
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
   timeout: 10000,
 })
-
+// Interceptor para añadir el token a las peticiones protegidas
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 // Interceptor para manejar errores globalmente
 api.interceptors.response.use(
   (response) => response,

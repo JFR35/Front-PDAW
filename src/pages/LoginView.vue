@@ -32,7 +32,8 @@ const handleLogin = () => {
     <div class="col-12 col-md-6 d-flex align-items-center justify-content-center p-4">
       <div class="card border-0 shadow-lg" style="max-width: 400px; width: 100%">
         <div class="card-body p-4">
-          <h2 class="card-title text-center mb-4">Iniciar Sesión</h2>
+          <p class="card-title mt-4">Ingresa tu correo corporativo y tu credencial</p>
+          <h2 class="card-title text-center mb-4 mt-4">Iniciar Sesión</h2>
           <form @submit.prevent="handleLogin">
             <div class="mb-3">
               <label for="email" class="form-label">Email</label>
@@ -40,7 +41,7 @@ const handleLogin = () => {
                 type="email"
                 class="form-control"
                 id="email"
-                placeholder="usuario@ejemplo.com"
+                placeholder="tusuario@ejemplo.com"
                 required
               />
             </div>
@@ -57,6 +58,11 @@ const handleLogin = () => {
             <div class="d-grid">
               <button type="submit" class="btn btn-primary btn-lg">Entrar</button>
             </div>
+            <div>
+              <p class="mt-3 text-center">
+                <router-link to="/ForgotPassword">Olvidó su contraseña?</router-link>
+              </p>
+            </div>
           </form>
         </div>
       </div>
@@ -69,6 +75,12 @@ img {
 }
 .overlay {
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+}
+.overlay h1 {
+  font-size: 3rem;
+}
+.overlay p {
+  font-size: 1.5rem;
 }
 
 @media (max-width: 768px) {
