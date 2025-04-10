@@ -2,7 +2,6 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8085/api',
-  /*axios.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('jwtToken')}`; Cuando haya JWT en la APIREST */
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
