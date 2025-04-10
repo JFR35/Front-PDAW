@@ -1,41 +1,54 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router' // Importación faltante
 
-const router = useRouter()
-const auth = useAuthStore()
+const authStore = useAuthStore()
+const router = useRouter() // Inicialización del router
+const email = ref('julianito@gmail.com')
+const password = ref('123ABCDE')
+const isLoading = ref(false)
+const errorMessage = ref('')
 
-const handleLogin = () => {
-  auth.login('Juanito') // Marca como Logado
-  // Simulación de autenticación exitosa
-  console.log('Login realizado')
-  router.push('/dashboard')
+const handleLogin = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  const success = await authStore.login(email.value, password.value)
+
+  if (success) {
+    // Redirige al dashboard o página principal
+    router.push('/dashboard')
+  } else {
+    errorMessage.value = 'Credenciales incorrectas'
+  }
+
+  isLoading.value = false
 }
 </script>
 
 <template>
   <div class="container-fluid vh-100 p-0 d-flex flex-column flex-md-row">
-    <!-- Contenedor izquierdo (imagen/bienvenida) - visible solo en desktop -->
-    <div
-      class="d-none d-md-flex col-md-6 bg-primary align-items-center justify-content-center text-white p-5"
-    >
-      <div class="text-center">
-        <h1 class="display-4 mb-4">Bienvenido</h1>
-        <p class="lead">Sistema de Gestión de Pacientes para Hipertensión</p>
-        <img
-          src="/src/assets/img/LoginPage.jpg"
-          alt="Sistema de Hipertensión"
-          class="img-fluid mt-4 rounded"
-          style="max-height: 300px"
-        />
+    <!-- Contenedor izquierdo (imagen con texto superpuesto) -->
+    <div class="col-md-6 p-0 position-relative">
+      <img
+        src="/src/assets/img/LoginPage.jpg"
+        alt="Sistema de Hipertensión"
+        class="w-100 h-100"
+        style="object-fit: cover;"
+      />
+      <div class="overlay position-absolute top-50 start-50 translate-middle text-white text-center">
+        <h1 class="display-4 mb-3">Bienvenido</h1>
+        <p class="lead">Mi Sistema de Control de Pacientes Hipertensos</p>
       </div>
     </div>
 
-    <!-- Contenedor derecho (login) - siempre visible -->
+    <!-- Contenedor derecho (login) -->
     <div class="col-12 col-md-6 d-flex align-items-center justify-content-center p-4">
       <div class="card border-0 shadow-lg" style="max-width: 400px; width: 100%">
         <div class="card-body p-4">
-          <h2 class="card-title text-center mb-4">Iniciar Sesión</h2>
+          <p class="card-title mt-4">Ingresa tu correo corporativo y tu credencial</p>
+          <h2 class="card-title text-center mb-4 mt-4">Iniciar Sesión</h2>
           <form @submit.prevent="handleLogin">
             <div class="mb-3">
               <label for="email" class="form-label">Email</label>
@@ -43,7 +56,8 @@ const handleLogin = () => {
                 type="email"
                 class="form-control"
                 id="email"
-                placeholder="usuario@ejemplo.com"
+                v-model="email"
+                placeholder="tusuario@ejemplo.com"
                 required
               />
             </div>
@@ -53,12 +67,25 @@ const handleLogin = () => {
                 type="password"
                 class="form-control"
                 id="password"
+                v-model="password"
                 placeholder="********"
                 required
               />
             </div>
+            <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
             <div class="d-grid">
-              <button type="submit" class="btn btn-primary btn-lg">Entrar</button>
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg"
+                :disabled="isLoading"
+              >
+                {{ isLoading ? 'Cargando...' : 'Entrar' }}
+              </button>
+            </div>
+            <div>
+              <p class="mt-3 text-center">
+                <router-link to="/forgot-password">Olvidó su contraseña?</router-link>
+              </p>
             </div>
           </form>
         </div>
@@ -68,8 +95,26 @@ const handleLogin = () => {
 </template>
 
 <style scoped>
-/* Estilo mínimo para asegurar que no haya scroll */
-.container-fluid {
-  overflow: hidden;
+img {
+  object-fit: cover;
+}
+.overlay {
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+}
+.overlay h1 {
+  font-size: 3rem;
+}
+.overlay p {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .overlay {
+    font-size: 1rem;
+  }
+
+  .card-body {
+    padding: 2rem;
+  }
 }
 </style>

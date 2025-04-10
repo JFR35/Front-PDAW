@@ -38,7 +38,7 @@
               </div>
               <h5 class="card-title mb-0 ms-3">Pacientes</h5>
             </div>
-            <p class="card-text text-muted">Gestiona la lista de tus pacientes.</p>
+            <p class="card-text text-muted">Gestiona tus observaciones.</p>
             <router-link to="/dashboard/pacientes" class="btn btn-sm btn-outline-success mt-auto align-self-start">
               Ver Pacientes <i class="fas fa-arrow-right ms-1"></i>
             </router-link>

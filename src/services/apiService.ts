@@ -6,9 +6,22 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
+  withCredentials: true,
   timeout: 10000,
 })
-
+// Interceptor para añadir el token a las peticiones protegidas
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 // Interceptor para manejar errores globalmente
 api.interceptors.response.use(
   (response) => response,
