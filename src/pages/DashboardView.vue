@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// Lógica del dashboard
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 </script>
 
 <template>
@@ -12,7 +14,7 @@
     </div>
 
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-      <div class="col">
+      <div class="col" v-if="auth.isPractitioner">
         <div class="card border-left-primary shadow-sm h-100 hover-effect">
           <div class="card-body d-flex flex-column">
             <div class="d-flex align-items-center mb-3">
@@ -29,7 +31,7 @@
         </div>
       </div>
 
-      <div class="col">
+      <div class="col" v-if="auth.isPractitioner">
         <div class="card border-left-success shadow-sm h-100 hover-effect">
           <div class="card-body d-flex flex-column">
             <div class="d-flex align-items-center mb-3">
@@ -38,7 +40,7 @@
               </div>
               <h5 class="card-title mb-0 ms-3">Pacientes</h5>
             </div>
-            <p class="card-text text-muted">Gestiona la lista de tus pacientes.</p>
+            <p class="card-text text-muted">Gestiona tus observaciones.</p>
             <router-link to="/dashboard/pacientes" class="btn btn-sm btn-outline-success mt-auto align-self-start">
               Ver Pacientes <i class="fas fa-arrow-right ms-1"></i>
             </router-link>
@@ -46,7 +48,7 @@
         </div>
       </div>
 
-      <div class="col">
+      <div class="col" v-if="auth.isAdmin">
         <div class="card border-left-info shadow-sm h-100 hover-effect">
           <div class="card-body d-flex flex-column">
             <div class="d-flex align-items-center mb-3">
@@ -56,7 +58,7 @@
               <h5 class="card-title mb-0 ms-3">Configuración</h5>
             </div>
             <p class="card-text text-muted">Ajusta la configuración de tu cuenta.</p>
-            <router-link to="/configuracion" class="btn btn-sm btn-outline-info mt-auto align-self-start">
+            <router-link to="/dashboard/configuracion" class="btn btn-sm btn-outline-info mt-auto align-self-start">
               Ir a Configuración <i class="fas fa-arrow-right ms-1"></i>
             </router-link>
           </div>
@@ -65,7 +67,6 @@
     </div>
   </div>
 </template>
-
 <style scoped>
 /* Efecto sutil al pasar el ratón */
 .hover-effect {
