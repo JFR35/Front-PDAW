@@ -8,7 +8,7 @@ import AppFooter from '@/components/AppFooter.vue'
   <div class="layout-wrapper">
     <AppHeader />
     <main class="layout-content">
-      <router-view />
+      <router-view /> <!-- Aquí aparece la vista del Dashboard una vez logado-->
     </main>
     <AppFooter />
   </div>

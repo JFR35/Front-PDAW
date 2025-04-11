@@ -1,4 +1,3 @@
-<!-- ResetPassword.vue -->
 <template>
   <form @submit.prevent="resetPassword">
     <input type="password" v-model="password" placeholder="Nueva contraseña" required />

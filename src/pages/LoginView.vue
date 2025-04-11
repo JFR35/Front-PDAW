@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router' // Importación faltante
+import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter() // Inicialización del router
-const email = ref('julianito@gmail.com')
-const password = ref('123ABCDE')
 const isLoading = ref(false)
 const errorMessage = ref('')
 

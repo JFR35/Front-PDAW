@@ -5,3 +5,8 @@ export interface createPractitioner {
   password: string
   role: string
 }
+export interface ApiResponse<T> {
+  data: T;
+  message?: string
+  success: boolean
+}
