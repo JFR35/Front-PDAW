@@ -17,12 +17,12 @@ const logout = () => {
       <div class="header-content">
         <div class="d-flex align-items-center">
           <i class="fas fa-heartbeat header-logo"></i>
-          <h1 class="app-title">Hipertensión Control</h1>
+          <h1 class="app-title">Mi Control de Pacientes con Hipertensión</h1>
         </div>
         <div class="user-controls">
-          <span class="username">{{ auth.username || 'usuario' }}</span>
+          <span class="username">Usuario:{{ auth.username || 'usuario' }}</span>
           <button @click="logout" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i> Salir
+            <i class="fas fa-check-circle text-success"></i> Salir
           </button>
         </div>
       </div>
