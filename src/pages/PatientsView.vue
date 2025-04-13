@@ -1,81 +1,87 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { usePatientStore } from '@/stores/patientStore'
-import { ref } from 'vue'
-import BaseModal from '@/components/BaseModal.vue'
 import type { Patient } from '@/types/patientTyped'
 
 const patientStore = usePatientStore()
+const activeTab = ref('list')
+const selectedPatient = ref<Patient | null>(null)
+const isSubmitting = ref(false)
+const formError = ref('')
 
-// Estados para los modales
-const showDeleteModal = ref(false)
-const showViewModal = ref(false)
-const showEditModal = ref(false)
-const showCreateModal = ref(false)
+const emptyPatient: Patient = { id: 0, name: '', age: 0, /* otros campos */ }
 
-const emptyPatient: Patient = { id: 0, name: '', age: 0 }
-const selectedPatient = ref<Patient>({ ...emptyPatient })
+// Cargar pacientes
+onMounted(async () => {
+  try {
+    await patientStore.fetchPatients()
+  } catch (error) {
+    console.error('Error loading patients:', error)
+  }
+})
 
-// Funciones para abrir modales
-const openDeleteModal = (patient: Patient) => {
-  selectedPatient.value = patient
-  showDeleteModal.value = true
-}
-
-const openViewModal = (patient: Patient) => {
-  selectedPatient.value = patient
-  showViewModal.value = true
-}
-
-const openEditModal = (patient: Patient) => {
-  selectedPatient.value = patient
-  showEditModal.value = true
-}
-
-const openCreateModal = () => {
-  selectedPatient.value = { ...emptyPatient }
-  showCreateModal.value = true
-}
-
-// Funciones para cerrar modales
-const closeModal = () => {
-  showDeleteModal.value = false
-  showViewModal.value = false
-  showEditModal.value = false
-  showCreateModal.value = false
+// Funciones de navegación
+const showList = () => {
+  activeTab.value = 'list'
   selectedPatient.value = null
 }
 
+const showCreateForm = () => {
+  activeTab.value = 'form'
+  selectedPatient.value = { ...emptyPatient }
+}
+
+const showEditForm = (patient: Patient) => {
+  activeTab.value = 'form'
+  selectedPatient.value = { ...patient }
+}
+
+const showDetails = (patient: Patient) => {
+  activeTab.value = 'details'
+  selectedPatient.value = { ...patient }
+}
+
+// Guardar paciente
 const savePatient = async () => {
   if (!selectedPatient.value) return
 
+  isSubmitting.value = true
+  formError.value = ''
+
   try {
     if (selectedPatient.value.id === 0) {
-      // Crear nuevo paciente
-      const { id, ...patientData } = selectedPatient.value
-      await patientStore.createPatient(patientData)
+      await patientStore.createPatient(selectedPatient.value)
     } else {
-      // Actualizar paciente existente
       await patientStore.updatePatient(selectedPatient.value)
     }
-
-    closeModal()
-    await patientStore.fetchPatients() // Refrescar la lista
+    showList()
+    await patientStore.fetchPatients()
   } catch (error) {
+    formError.value = 'Error al guardar el paciente. Por favor intente nuevamente.'
     console.error('Error saving patient:', error)
-  }
-}
-// Función para eliminar paciente
-const deletePatient = async() => {
-  if(selectedPatient.value) {
-    await patientStore.deletePatient(selectedPatient.value.id)
-    closeModal()
+  } finally {
+    isSubmitting.value = false
   }
 }
 
-onMounted(async () => {
-  await patientStore.fetchPatients()
-})
+// Eliminar paciente
+const deletePatient = async () => {
+  if (!selectedPatient.value) return
+
+  isSubmitting.value = true
+  formError.value = ''
+
+  try {
+    await patientStore.deletePatient(selectedPatient.value.id)
+    showList()
+    await patientStore.fetchPatients()
+  } catch (error) {
+    formError.value = 'Error al eliminar el paciente. Por favor intente nuevamente.'
+    console.error('Error deleting patient:', error)
+  } finally {
+    isSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -85,38 +91,49 @@ onMounted(async () => {
       <ol class="breadcrumb">
         <li class="breadcrumb-item">
           <router-link to="/dashboard" class="text-decoration-none">
-            <i class="fas fa-home"></i> Dashboard
+            <i class=""></i> Dashboard
           </router-link>
         </li>
         <li class="breadcrumb-item active" aria-current="page">Pacientes</li>
       </ol>
     </nav>
 
-    <!-- Header con título y botón -->
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h2 class="mb-1">
-          <i class="fas fa-users text-primary me-2"></i>Panel del paciente
+          <i class=""></i>Gestión de Pacientes
         </h2>
-        <p class="text-muted mb-0">Registrar observaciones</p>
+        <p class="text-muted mb-0">Administra los registros médicos</p>
       </div>
-      <button @click="openCreateModal" class="btn btn-primary">
-        <i class="fas fa-user-plus"></i> Nuevo Paciente
+      <button
+        v-if="activeTab === 'list'"
+        @click="showCreateForm"
+        class="btn btn-primary"
+      >
+        <i class="fas fa-check-circle text-success"></i> Nuevo Paciente
+      </button>
+      <button
+        v-else
+        @click="showList"
+        class="btn btn-outline-secondary"
+      >
+        <i class="fas fa-arrow-left me-2"></i> Volver
       </button>
     </div>
 
-    <!-- Tabla de pacientes -->
-    <div class="card shadow-sm">
+    <!-- Lista de pacientes -->
+    <div v-if="activeTab === 'list'" class="card shadow-sm">
       <div class="card-body p-0">
         <div v-if="patientStore.patients.length > 0">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th class="text-nowrap">ID</th>
-                  <th class="text-nowrap">Nombre</th>
-                  <th class="text-nowrap">Edad</th>
-                  <th class="text-nowrap text-end">Acciones</th>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Edad</th>
+                  <th class="text-end">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,25 +144,25 @@ onMounted(async () => {
                   <td class="text-end">
                     <div class="d-flex gap-2 justify-content-end">
                       <button
-                        @click="openViewModal(patient)"
+                        @click="showDetails(patient)"
                         class="btn btn-sm btn-outline-primary"
                         title="Ver detalles"
                       >
                         <i class="fas fa-eye"></i>
                       </button>
                       <button
-                        @click="openEditModal(patient)"
-                        class="btn btn-sm btn-outline-secondary"
+                        @click="showEditForm(patient)"
+                        class="btn btn-sm btn-outline-warning"
                         title="Editar"
                       >
                         <i class="fas fa-edit"></i>
                       </button>
                       <button
-                        @click="openDeleteModal(patient)"
+                        @click="deletePatient(patient)"
                         class="btn btn-sm btn-outline-danger"
                         title="Eliminar"
                       >
-                        <i class="fas fa-trash"></i>
+                        <i class="fas fa-trash-alt"></i>
                       </button>
                     </div>
                   </td>
@@ -155,128 +172,155 @@ onMounted(async () => {
           </div>
         </div>
         <div v-else class="text-center p-5">
-          <i class="fas fa-users display-5 text-muted mb-3"></i>
+          <i class=""></i>
           <h5 class="text-muted">No hay pacientes registrados</h5>
-          <p class="text-muted">Comienza agregando un nuevo paciente</p>
-          <button @click="openCreateModal" class="btn btn-primary mt-3">
-            <i class="fas fa-user-plus"></i> Agregar Paciente
+          <button @click="showCreateForm" class="btn btn-primary mt-3">
+            <i class="fas fa-check-circle text-success"></i> Agregar Paciente
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Modal para eliminar paciente -->
-    <BaseModal :visible="showDeleteModal" @close="closeModal">
-      <div class="text-center">
-        <i class="fas fa-exclamation-triangle text-warning display-5 mb-3"></i>
-        <h4>¿Eliminar paciente?</h4>
-        <p>¿Estás seguro que deseas eliminar a {{ selectedPatient?.name }}? Esta acción no se puede deshacer.</p>
+    <!-- Formulario de paciente -->
+    <div v-else-if="activeTab === 'form'" class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="card-title mb-4">
+          <i class="fas fa-user-edit me-2"></i>
+          {{ selectedPatient?.id ? 'Editar' : 'Nuevo' }} Paciente
+        </h3>
 
-        <div class="d-flex justify-content-center gap-3 mt-4">
-          <button @click="closeModal" class="btn btn-outline-secondary">
-            Cancelar
-          </button>
-          <button @click="deletePatient" class="btn btn-danger">
-            <i class="fas fa-trash"></i> Eliminar
+        <div v-if="formError" class="alert alert-danger">
+          {{ formError }}
+        </div>
+
+        <form @submit.prevent="savePatient">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="name" class="form-label">Nombre completo</label>
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                v-model="selectedPatient.name"
+                required
+                placeholder="Ej: Juan Pérez"
+              >
+            </div>
+
+            <div class="col-md-6">
+              <label for="age" class="form-label">Edad</label>
+              <input
+                type="number"
+                class="form-control"
+                id="age"
+                v-model="selectedPatient.age"
+                required
+                min="0"
+                max="120"
+                placeholder="Ej: 35"
+              >
+            </div>
+
+            <!-- Agrega más campos según necesites -->
+
+            <div class="col-12 mt-4">
+              <div class="d-flex justify-content-end gap-2">
+                <button
+                  type="button"
+                  @click="showList"
+                  class="btn btn-outline-secondary"
+                  :disabled="isSubmitting"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="isSubmitting"
+                >
+                  <span v-if="isSubmitting">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    Guardando...
+                  </span>
+                  <span v-else>
+                    <i class="fas fa-save me-2"></i>
+                    {{ selectedPatient?.id ? 'Actualizar' : 'Guardar' }}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Detalles del paciente -->
+    <div v-else-if="activeTab === 'details' && selectedPatient" class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-user-circle me-2"></i>
+            Detalles del Paciente
+          </h3>
+          <button @click="showList" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-times"></i>
           </button>
         </div>
-      </div>
-    </BaseModal>
 
-    <!-- Modal para ver paciente -->
-    <BaseModal :visible="showViewModal" @close="closeModal" size="lg">
-      <div v-if="selectedPatient">
-        <h3 class="text-center mb-4">Detalles del Paciente</h3>
         <div class="row">
           <div class="col-md-6">
-            <p><strong>ID:</strong> {{ selectedPatient.id }}</p>
-            <p><strong>Nombre:</strong> {{ selectedPatient.name }}</p>
-            <p><strong>Edad:</strong> {{ selectedPatient.age }} años</p>
+            <div class="patient-detail mb-3">
+              <h6 class="text-muted mb-1">ID</h6>
+              <p class="fs-5">#{{ selectedPatient.id }}</p>
+            </div>
+
+            <div class="patient-detail mb-3">
+              <h6 class="text-muted mb-1">Nombre completo</h6>
+              <p class="fs-5">{{ selectedPatient.name }}</p>
+            </div>
+
+            <div class="patient-detail mb-3">
+              <h6 class="text-muted mb-1">Edad</h6>
+              <p class="fs-5">{{ selectedPatient.age }} años</p>
+            </div>
           </div>
+
           <div class="col-md-6">
-            <!-- Aquí puedes agregar más detalles si los tienes -->
+            <!-- Aquí puedes agregar más detalles -->
           </div>
         </div>
-        <div class="text-center mt-4">
-          <button @click="closeModal" class="btn btn-primary">
-            Cerrar
+
+        <div class="mt-4 pt-3 border-top">
+          <button
+            @click="showEditForm(selectedPatient)"
+            class="btn btn-warning me-2"
+          >
+            <i class="fas fa-edit me-2"></i> Editar
+          </button>
+          <button
+            @click="deletePatient"
+            class="btn btn-outline-danger"
+          >
+            <i class="fas fa-trash-alt me-2"></i> Eliminar
           </button>
         </div>
       </div>
-    </BaseModal>
-
-    <!-- Modal para editar paciente -->
-    <BaseModal :visible="showEditModal" @close="closeModal" size="lg">
-      <div v-if="selectedPatient">
-        <h3 class="text-center mb-4">Editar Paciente</h3>
-        <form @submit.prevent="savePatient">
-          <div class="mb-3">
-            <label for="editName" class="form-label">Nombre</label>
-            <input
-              type="text"
-              class="form-control"
-              id="editName"
-              v-model="selectedPatient.name"
-              required
-            >
-          </div>
-          <div class="mb-3">
-            <label for="editAge" class="form-label">Edad</label>
-            <input
-              type="number"
-              class="form-control"
-              id="editAge"
-              v-model="selectedPatient.age"
-              required
-            >
-          </div>
-          <div class="d-flex justify-content-center gap-3 mt-4">
-            <button @click="closeModal" class="btn btn-outline-secondary">
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i> Guardar Cambios
-            </button>
-          </div>
-        </form>
-      </div>
-    </BaseModal>
-
-    <!-- Modal para crear paciente -->
-    <BaseModal :visible="showCreateModal" @close="closeModal" size="lg">
-      <div>
-        <h3 class="text-center mb-4">Nuevo Paciente</h3>
-        <form @submit.prevent="savePatient">
-          <div class="mb-3">
-            <label for="createName" class="form-label">Nombre</label>
-            <input
-              type="text"
-              class="form-control"
-              id="createName"
-              v-model="selectedPatient.name"
-              required
-            >
-          </div>
-          <div class="mb-3">
-            <label for="createAge" class="form-label">Edad</label>
-            <input
-              type="number"
-              class="form-control"
-              id="createAge"
-              v-model="selectedPatient.age"
-              required
-            >
-          </div>
-          <div class="d-flex justify-content-center gap-3 mt-4">
-            <button @click="closeModal" class="btn btn-outline-secondary">
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i> Guardar Paciente
-            </button>
-          </div>
-        </form>
-      </div>
-    </BaseModal>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.patient-detail {
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+}
+
+.table th {
+  font-weight: 600;
+}
+
+.card-title {
+  font-weight: 600;
+}
+</style>

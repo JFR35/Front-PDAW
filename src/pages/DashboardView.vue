@@ -21,11 +21,11 @@ const auth = useAuthStore()
               <div class="icon-circle bg-primary-light">
                 <i class="fas fa-calendar text-primary"></i>
               </div>
-              <h5 class="card-title mb-0 ms-3">Citas Pendientes</h5>
+              <h5 class="card-title mb-0 ms-3">Visitas</h5>
             </div>
-            <p class="card-text text-muted">Aquí podrás ver tus próximas citas.</p>
+            <p class="card-text text-muted">Aquí podrás ver tus próximas visitas del paciente.</p>
             <router-link to="/dashboard/citas" class="btn btn-sm btn-outline-primary mt-auto align-self-start">
-              Ver Citas <i class="fas fa-arrow-right ms-1"></i>
+              Ver Citas <i class="fas fa-check-circle text-success"></i>
             </router-link>
           </div>
         </div>
@@ -42,7 +42,7 @@ const auth = useAuthStore()
             </div>
             <p class="card-text text-muted">Gestiona tus observaciones.</p>
             <router-link to="/dashboard/pacientes" class="btn btn-sm btn-outline-success mt-auto align-self-start">
-              Ver Pacientes <i class="fas fa-arrow-right ms-1"></i>
+              Ver Pacientes <i class="fas fa-check-circle text-success"></i>
             </router-link>
           </div>
         </div>
@@ -59,7 +59,7 @@ const auth = useAuthStore()
             </div>
             <p class="card-text text-muted">Ajusta la configuración de tu cuenta.</p>
             <router-link to="/dashboard/configuracion" class="btn btn-sm btn-outline-info mt-auto align-self-start">
-              Ir a Configuración <i class="fas fa-arrow-right ms-1"></i>
+              Ir a Configuración <i class="fas fa-check-circle text-success"></i>
             </router-link>
           </div>
         </div>

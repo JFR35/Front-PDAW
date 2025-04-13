@@ -37,7 +37,6 @@ export const usePatientStore = defineStore('patients', {
         this.loading = false
       }
     },
-
     async fetchPatient(id: number) {
       this.loading = true
       try {
