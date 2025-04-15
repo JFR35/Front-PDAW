@@ -1,3 +1,8 @@
+/**
+ * Maneja la autenticación del usuariocon acciones Login/logoute + validación de Roles
+ * Se almacena en localStorage para recordar datos importantes
+ * como el token y rol del usuario
+*/
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/apiService'
