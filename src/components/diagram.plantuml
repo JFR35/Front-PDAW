@@ -1,0 +1,11 @@
+@startuml mi diagrama
+actor Admin
+actor Medico
+actor Paciente
+Admin --> (Login)
+Admin --> (Crear Médico)
+Medico --> (Login)
+Medico --> (Ver pacientes)
+Medico --> (Registrar presión arterial)
+Paciente -->(Ver mi HCE)
+@enduml

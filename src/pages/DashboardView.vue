@@ -53,11 +53,11 @@ const auth = useAuthStore()
           <div class="card-body d-flex flex-column">
             <div class="d-flex align-items-center mb-3">
               <div class="icon-circle bg-info-light">
-                <i class="fas fa-cog text-info"></i>
+                <i class=""></i>
               </div>
-              <h5 class="card-title mb-0 ms-3">Configuración</h5>
+              <h5 class="card-title mb-0 ms-3">Facultativos</h5>
             </div>
-            <p class="card-text text-muted">Ajusta la configuración de tu cuenta.</p>
+            <p class="card-text text-muted">Realiza acciones de administración sobre el personal facultativo.</p>
             <router-link to="/dashboard/configuracion" class="btn btn-sm btn-outline-info mt-auto align-self-start">
               Ir a Configuración <i class="fas fa-check-circle text-success"></i>
             </router-link>

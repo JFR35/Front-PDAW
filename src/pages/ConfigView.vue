@@ -1,206 +1,273 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { createPractitioner, ApiResponse } from '@/types/admin'
-import api from '@/services/apiService'
+import { ref, onMounted } from 'vue';
+import { usePractitionerStore } from '@/stores/practitionerStore';
+import { useAuthStore } from '@/stores/auth';
+import type { FhirPractitioner, FhirPractitionerEntity } from '@/types/FhirPractitioner';
+import { useRouter } from 'vue-router';
 
-const medico = ref<Omit<createPractitioner, 'role'>>({
-  firstName: '',
-  lastName: '',
-  email: '',
-  password: ''
-})
-const errorMessage = ref<string>('')
-const successMessage = ref<string>('')
-const isSubmitting = ref<boolean>(false)
+const store = usePractitionerStore();
+const authStore = useAuthStore();
+const router = useRouter();
 
-const isValidEmail = (email: string): boolean => {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return re.test(email)
-}
+const formData = ref<FhirPractitioner>({
+  resourceType: 'Practitioner',
+  name: [{ family: '', given: [''] }],
+  identifier: [{ system: '', value: '' }],
+  telecom: [{ system: 'email', value: '' }],
+  gender: undefined,
+  birthDate: undefined,
+  qualification: [],
+  address: []
+});
+
+const editingId = ref<string | null>(null);
+const errorMessage = ref<string>('');
+const successMessage = ref<string>('');
+const isSubmitting = ref<boolean>(false);
+
+const validateForm = (): boolean => {
+  errorMessage.value = '';
+
+  if (!formData.value.name?.[0]?.family) {
+    errorMessage.value = 'El apellido es requerido';
+    return false;
+  }
+  if (!formData.value.name?.[0]?.given?.[0]) {
+    errorMessage.value = 'El nombre es requerido';
+    return false;
+  }
+  if (!formData.value.identifier?.[0]?.value) {
+    errorMessage.value = 'El identificador es requerido';
+    return false;
+  }
+  if (!formData.value.telecom?.some(t => t.system === 'email' && t.value)) {
+    errorMessage.value = 'El email es requerido';
+    return false;
+  }
+  return true;
+};
 
 const handleSubmit = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  if (!medico.value.firstName.trim()) {
-    errorMessage.value = 'El nombre es requerido'
-    return
+  if (!validateForm()) return;
+  if (!authStore.isLoggedIn) {
+    errorMessage.value = 'Debe iniciar sesión para realizar esta acción';
+    router.push('/login');
+    return;
   }
-
-  if (!medico.value.lastName.trim()) {
-    errorMessage.value = 'El apellido es requerido'
-    return
-  }
-
-  if (!medico.value.email.trim()) {
-    errorMessage.value = 'El email es requerido'
-    return
-  }
-
-  if (!isValidEmail(medico.value.email)) {
-    errorMessage.value = 'Por favor ingrese un email válido'
-    return
-  }
-
-  if (!medico.value.password) {
-    errorMessage.value = 'La contraseña es requerida'
-    return
-  }
-
-  isSubmitting.value = true
+  isSubmitting.value = true;
 
   try {
-    const response = await api.post<ApiResponse<createPractitioner>>('/users/practitioners', medico.value)
-
-    if (response.data.success) {
-      successMessage.value = response.data.message || 'Médico registrado correctamente'
-      medico.value = { firstName: '', lastName: '', email: '', password: '' }
+    const practitionerJson = JSON.stringify(formData.value);
+    if (editingId.value) {
+      await store.updatePractitioner(editingId.value, practitionerJson);
+      successMessage.value = 'Médico actualizado correctamente';
     } else {
-      errorMessage.value = response.data.message || 'Error al registrar el médico.'
+      const userId = authStore.username || authStore.token;
+      if (!userId) throw new Error('No se encontró un ID de usuario válido');
+      await store.createPractitioner(practitionerJson, userId);
+      successMessage.value = 'Médico registrado correctamente';
     }
-  } catch (error: any) {
-    errorMessage.value = error.response?.data?.message || 'Error al registrar el médico. Por favor intente nuevamente.'
+    resetForm();
+  } catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Error al procesar la solicitud';
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
+
+const resetForm = () => {
+  formData.value = {
+    resourceType: 'Practitioner',
+    name: [{ family: '', given: [''] }],
+    identifier: [{ system: '', value: '' }],
+    telecom: [{ system: 'email', value: '' }],
+    gender: undefined,
+    birthDate: undefined,
+    qualification: [],
+    address: []
+  };
+  editingId.value = null;
+  errorMessage.value = '';
+  setTimeout(() => successMessage.value = '', 3000);
+};
+
+const editPractitioner = (practitioner: FhirPractitionerEntity) => {
+  if (practitioner.parsedPractitioner) {
+    formData.value = JSON.parse(JSON.stringify(practitioner.parsedPractitioner));
+    editingId.value = practitioner.id;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const confirmDelete = async (id: string) => {
+  if (confirm('¿Está seguro de eliminar este médico?')) {
+    try {
+      await store.deletePractitioner(id);
+      successMessage.value = 'Médico eliminado correctamente';
+      setTimeout(() => successMessage.value = '', 3000);
+    } catch (error: unknown) {
+      errorMessage.value = error instanceof Error ? error.message : 'Error al eliminar el médico';
+    }
+  }
+};
+
+onMounted(() => {
+  if (!authStore.isLoggedIn) {
+    router.push('/login');
+  } else {
+    store.loadPractitioners();
+  }
+});
 </script>
 
 <template>
   <div class="container-fluid min-vh-100 d-flex flex-column p-0">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="bg-light py-3 px-4 mb-0">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <router-link to="/dashboard" class="text-decoration-none">
-            <i class=""></i> Dashboard
-          </router-link>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Alta de Médico</li>
-      </ol>
-    </nav>
-
     <div class="row flex-grow-1 g-0">
-      <!-- Formulario -->
+      <!-- Form Section -->
       <div class="col-lg-6 d-flex align-items-center justify-content-center p-4 bg-white">
-        <div class="w-100" style="max-width: 500px;">
-          <div class="text-center mb-4">
-            <h2 class="fw-bold text-primary">
-              <i class="fas fa-user-md me-2"></i>Alta de Médico
-            </h2>
-            <p class="text-muted">Complete los datos del profesional médico</p>
-          </div>
+        <div class="w-100" style="max-width: 500px">
+          <h2 class="mb-4">{{ editingId ? 'Editar Médico' : 'Registrar Nuevo Médico' }}</h2>
 
-          <div v-if="errorMessage" class="alert alert-danger alert-dismissible fade show">
+          <div v-if="errorMessage" class="alert alert-danger" role="alert">
             {{ errorMessage }}
-            <button type="button" class="btn-close" @click="errorMessage = ''"></button>
           </div>
-
-          <div v-if="successMessage" class="alert alert-success alert-dismissible fade show">
+          <div v-if="successMessage" class="alert alert-success" role="alert">
             {{ successMessage }}
-            <button type="button" class="btn-close" @click="successMessage = ''"></button>
           </div>
 
           <form @submit.prevent="handleSubmit" class="needs-validation" novalidate>
+            <!-- Name Field -->
             <div class="mb-3">
-              <label for="firstName" class="form-label fw-semibold">Nombre</label>
-              <div class="input-group">
-                <span class="input-group-text bg-primary bg-opacity-10 text-primary">
-                  <i class="fas fa-user"></i>
-                </span>
-                <input
-                  type="text"
-                  class="form-control"
-                  id="firstName"
-                  placeholder="Nombre del médico"
-                  required
-                  v-model="medico.firstName"
-                >
-              </div>
+              <label class="form-label fw-semibold">Nombre</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Nombre"
+                v-model="formData.name[0].given[0]"
+                required
+              />
             </div>
 
+            <!-- Last Name Field -->
             <div class="mb-3">
-              <label for="lastName" class="form-label fw-semibold">Apellido</label>
-              <div class="input-group">
-                <span class="input-group-text bg-primary bg-opacity-10 text-primary">
-                  <i class="fas fa-user"></i>
-                </span>
-                <input
-                  type="text"
-                  class="form-control"
-                  id="lastName"
-                  placeholder="Apellido del médico"
-                  required
-                  v-model="medico.lastName"
-                >
-              </div>
+              <label class="form-label fw-semibold">Apellido</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Apellido"
+                v-model="formData.name[0].family"
+                required
+              />
             </div>
 
+            <!-- Identifier Field -->
             <div class="mb-3">
-              <label for="email" class="form-label fw-semibold">Email</label>
-              <div class="input-group">
-                <span class="input-group-text bg-primary bg-opacity-10 text-primary">
-                  <i class="fas fa-envelope"></i>
-                </span>
-                <input
-                  type="email"
-                  class="form-control"
-                  id="email"
-                  placeholder="correo@ejemplo.com"
-                  required
-                  v-model="medico.email"
-                >
-              </div>
+              <label class="form-label fw-semibold">Identificador</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Identificador profesional"
+                v-model="formData.identifier[0].value"
+                required
+              />
             </div>
 
-            <div class="mb-4">
-              <label for="password" class="form-label fw-semibold">Contraseña</label>
-              <div class="input-group">
-                <span class="input-group-text bg-primary bg-opacity-10 text-primary">
-                  <i class="fas fa-lock"></i>
-                </span>
-                <input
-                  type="password"
-                  class="form-control"
-                  id="password"
-                  placeholder="Mínimo 8 caracteres"
-                  required
-                  minlength="8"
-                  v-model="medico.password"
-                >
-              </div>
-              <div class="form-text">La contraseña debe tener al menos 8 caracteres</div>
+            <!-- Email Field -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Email</label>
+              <input
+                type="email"
+                class="form-control"
+                placeholder="Correo electrónico"
+                :value="formData.telecom?.find(t => t.system === 'email')?.value || ''"
+                @input="(e) => {
+                  const email = formData.telecom?.find(t => t.system === 'email');
+                  if (email) {
+                    email.value = (e.target as HTMLInputElement).value;
+                  } else {
+                    formData.telecom = [...(formData.telecom || []), { system: 'email', value: (e.target as HTMLInputElement).value }];
+                  }
+                }"
+                required
+              />
             </div>
 
-            <div class="d-grid">
+            <!-- Submit Buttons -->
+            <div class="mb-3 text-end">
+              <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+                <span v-if="isSubmitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                {{ editingId ? 'Actualizar' : 'Registrar' }}
+              </button>
               <button
-                type="submit"
-                class="btn btn-primary btn-lg py-3 fw-semibold"
-                :disabled="isSubmitting"
+                type="button"
+                class="btn btn-secondary ms-2"
+                @click="resetForm"
+                v-if="editingId"
               >
-                <template v-if="isSubmitting">
-                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Procesando...
-                </template>
-                <template v-else>
-                  <i class="fas fa-save me-2"></i> Registrar Médico
-                </template>
+                Cancelar
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      <!-- Panel derecho -->
-      <div class="col-lg-6 d-none d-lg-flex bg-primary bg-gradient align-items-center justify-content-center p-5">
-        <div class="text-white text-center">
-          <i class="fas fa-hospital-user display-1 mb-4"></i>
-          <h1 class="display-5 fw-bold mb-4">Sistema de Gestión Médica</h1>
-          <p class="lead opacity-75">Simplifique el registro y administración de profesionales médicos</p>
-          <div class="mt-5 pt-4 border-top border-white border-opacity-25">
-            <p class="small opacity-75">
-              <i class="fas fa-shield-alt me-2"></i> Todos los datos están protegidos
-            </p>
+      <!-- List Section -->
+      <div class="col-lg-6 p-4">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">Listado de Médicos</h5>
+          </div>
+          <div class="card-body">
+            <div v-if="store.loading" class="text-center py-3">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+            </div>
+
+            <div v-else-if="store.practitioners.length === 0" class="text-center py-3">
+              No hay médicos registrados
+            </div>
+
+            <div v-else class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Identificador</th>
+                    <th>Email</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="practitioner in store.practitioners" :key="practitioner.id">
+                    <td>
+                      {{ practitioner.parsedPractitioner?.name?.[0]?.given?.[0] }}
+                      {{ practitioner.parsedPractitioner?.name?.[0]?.family }}
+                    </td>
+                    <td>
+                      {{ practitioner.parsedPractitioner?.identifier?.[0]?.value }}
+                    </td>
+                    <td>
+                      {{ practitioner.parsedPractitioner?.telecom?.find(t => t.system === 'email')?.value }}
+                    </td>
+                    <td>
+                      <button
+                        class="btn btn-sm btn-outline-primary me-2"
+                        @click="editPractitioner(practitioner)"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        @click="confirmDelete(practitioner.id)"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -209,14 +276,20 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* Solo estilos esenciales que no pueden lograrse con Bootstrap */
-.bg-gradient {
-  background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+.table-responsive {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
-@media (max-width: 992px) {
-  .min-vh-100 {
-    min-height: auto !important;
-  }
+.card {
+  border-radius: 0.5rem;
+}
+
+.alert {
+  margin-bottom: 1rem;
+}
+
+.form-control {
+  border-radius: 0.375rem;
 }
 </style>
