@@ -1,3 +1,6 @@
+/**
+ * Define las rutas del sistema y la lógica de autenticación usando vue-router
+ */
 import { createRouter, createWebHistory } from 'vue-router'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import GuestLayout from '@/layouts/GuestLayout.vue'
@@ -6,7 +9,7 @@ import DashboardView from '@/pages/DashboardView.vue'
 import { useAuthStore } from '@/stores/auth'
 import PatientsView from '@/pages/PatientsView.vue'
 import AppoinmentView from '@/pages/AppoinmentView.vue'
-import ConfigView from '@/pages/ConfigView.vue'
+import ConfigView from '@/pages/AdminUsers.vue'
 
 //import ForgotPassword from '@/pages/ForgotPassword.vue'
 

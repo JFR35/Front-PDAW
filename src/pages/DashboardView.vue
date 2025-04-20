@@ -59,7 +59,7 @@ const auth = useAuthStore()
             </div>
             <p class="card-text text-muted">Realiza acciones de administración sobre el personal facultativo.</p>
             <router-link to="/dashboard/configuracion" class="btn btn-sm btn-outline-info mt-auto align-self-start">
-              Ir a Configuración <i class="fas fa-check-circle text-success"></i>
+              Ir a administración<i class="fas fa-check-circle text-success"></i>
             </router-link>
           </div>
         </div>

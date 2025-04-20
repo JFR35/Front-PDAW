@@ -1,3 +1,8 @@
+/**
+ * Actúa como puente para las comunicaciones con el backend
+ * Configuración: Usa Axios con una URL base 'http://localhost:8085/api'
+ * Autenticación: Un interceptor carga el JWT y lo almacena en LocalStorage
+ */
 import axios from 'axios';
 
 const api = axios.create({
