@@ -8,5 +8,5 @@ export interface AuthRequest {
 export interface AuthResponse {
   token: string
   role: string
-
+  userId: string
 }

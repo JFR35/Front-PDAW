@@ -1,39 +1,21 @@
-# front-hipertension
 
-This template should help get you started developing with Vue 3 in Vite.
+## Desarrollo
+El frontend está desarrollado con **Vue 3**, **Pinia** para la gestión del estado, **TypeScript** para un tipado fuerte y **Vue Router** para la navegación.
+La aplicación permite a los usuarios autenticarse, gestionar perfiles de profesionales sanitarios (`Practitioner`) basados en el estándar FHIR, y acceder a funcionalidades según sus roles (`ROLE_PRACTITIONER`, `ROLE_ADMIN`).
 
-## Recommended IDE Setup
+### Características
+- **Gestión del estado**: Pinia permite manejar el estado de los recursos FHIR y la autenticación, con stores dedicados (ej: `practitionerStore.ts`, `AuthStore.ts`).
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- **Tipado fuerte**: TypeScritp asegura que los datos manipulados, en especial con recursos FHIR respeten la estructura definida en el backend.
 
-## Type Support for `.vue` Imports in TS
+- **Autenticación**: Los usuarios se autentican mediante un JWT almacenado en `LocalStorage` para proteger rutas según el rol.
+- **Interfaz**: Los formularios para crear/actualizar perfiles `Practitioner` están diseñados para cumplir con las restricciones del perfil FHIR (campos obligatorios).
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
 
-## Customize configuration
 
-See [Vite Configuration Reference](https://vite.dev/config/).
 
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
+### Ejecución
+```bash
+cd C:\Front-PDAW\Front-PDAW
+nmp install
 npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
