@@ -1,3 +1,9 @@
+/**
+ * Representa un recurso de FHIR practitioner.
+ * Define la estructura estándar de un profesional
+ * de la salud en FHIR R4.
+ */
+
 export interface FhirPractitioner {
   resourceType: 'Practitioner';
   id?: string;
@@ -34,6 +40,12 @@ export interface FhirPractitioner {
   }[];
 }
 
+/**
+ * Entidad de persistencia del practitioner en la BBDD
+ * Define la estructura para almacenar un recurso FHIR
+ * en la bbdd.
+ * Incluye su representación JSON y su versión interpretada.
+ */
 export interface FhirPractitionerEntity {
   id: string;
   resourcePractitionerJson: string;

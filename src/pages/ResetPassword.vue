@@ -8,7 +8,7 @@
 <script lang="ts" setup>
 import { useRoute } from 'vue-router'
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
 const token = route.query.token as string
