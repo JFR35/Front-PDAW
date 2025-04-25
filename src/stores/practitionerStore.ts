@@ -36,7 +36,7 @@ export const usePractitionerStore = defineStore('practitionerStore', {
       this.error = null;
       try {
         const practitionerJson = JSON.stringify(practitionerData);
-        const response = await api.post('/fhir/Practitioner', practitionerJson, {
+        const response = await api.post('/practitioners', practitionerJson, {
           headers: {
             'Content-Type': 'application/json',
           },

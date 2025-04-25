@@ -1,10 +1,18 @@
-// Enviar las credenciales de acceso al inicio de sesión
+/**
+ * Solicitud de autenticación del user.
+ * Define los datos requeridos para el inicio
+ * de sesión en el sistema.
+ */
 export interface AuthRequest {
   email: string
   password: string
 }
 
-// Tipar la respuesta de la autenticación en auth.ts
+/**
+ * Respuesta de la autenticación de la API.
+ * Incluye los datos que se retornan después de
+ * la autenticación.
+ */
 export interface AuthResponse {
   token: string
   role: string
