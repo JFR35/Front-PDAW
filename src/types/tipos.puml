@@ -1,0 +1,48 @@
+@startuml
+package "auth" #..# {
+  package "auth.controller" <<SpringBeans>> #..# {
+    [AuthController]
+    [RoleController]
+    [UserController]
+  }
+  package "auth.service" <<SpringBeans>> #..# {
+    [MyUserServiceImpl]
+    [RoleServiceImpl]
+  }
+  package "auth.repository" <<SpringBeans>> #..# {
+    [MyUserRepository]
+    [RoleRepository]
+  }
+  package "auth.security" <<SpringBeans>> #..# {
+    [JwtService]
+    [SecurityConfig]
+  }
+  [auth.controller] --> [auth.service]
+  [auth.service] --> [auth.repository]
+  [auth.controller] --> [auth.security]
+}
+
+package "fhir" #..# {
+  package "fhir.controller" <<SpringBeans>> #..# {
+    [FhirPatientController]
+    [FhirPractitionerController]
+  }
+  package "fhir.persistence" <<SpringBeans>> #..# {
+    [FhirPatientRepository]
+    [FhirPractitionerRepository]
+  }
+  package "fhir.config" <<SpringBeans>> #..# {
+    [FhirValidationConfig]
+  }
+  [fhir.controller] --> [fhir.persistence]
+  [fhir.controller] --> [fhir.config]
+}
+
+package "org.springframework.security" #..#
+package "ca.uhn.fhir" #..#
+
+[auth] --> [org.springframework.security]
+[fhir] --> [ca.uhn.fhir]
+[fhir] --> [auth] : "Autenticacion"
+
+@enduml
