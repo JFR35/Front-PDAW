@@ -7,6 +7,9 @@
 export interface FhirPractitioner {
   resourceType: 'Practitioner';
   id?: string;
+  meta?: {
+    profile?: string[];
+  };
   identifier?: {
     system: string;
     value: string;
