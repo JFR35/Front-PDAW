@@ -1,15 +1,15 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import api from '@/services/apiService';
-import type { AuthResponse } from '@/types/auth';
+// Importa TODAS las interfaces necesarias desde tu archivo central de tipos
+import type { AuthResponse, AuthRequest, CreatePractitioner, ApiResponse, User } from '@/types/auth';
 
 export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = ref(false);
   const username = ref('');
   const token = ref('');
   const userRole = ref('');
-  const userId = ref<string | null>(null);
-  const hasPractitionerProfile = ref(false);
+  const userId = ref<string | null>(null); // Mantener como string | null
 
   const login = async (email: string, password: string) => {
     try {
@@ -20,15 +20,15 @@ export const useAuthStore = defineStore('auth', () => {
       if (authData && authData.token) {
         token.value = authData.token;
         userRole.value = authData.role || '';
-        userId.value = authData.userId || null;
+        userId.value = authData.userId || null; // Asegúrate de que userId venga como string
 
         if (!authData.userId) {
-          console.warn('No userId provided in auth response. Practitioner profile check may fail.');
+          console.warn('No userId provided in auth response. Some functionalities may be limited.');
         }
 
         localStorage.setItem('jwtToken', authData.token);
         localStorage.setItem('userRole', userRole.value);
-        localStorage.setItem('userId', userId.value || '');
+        localStorage.setItem('userId', userId.value || ''); // Guardar como string
 
         isLoggedIn.value = true;
         username.value = email;
@@ -49,7 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = '';
     userRole.value = '';
     userId.value = null;
-    hasPractitionerProfile.value = false;
     localStorage.removeItem('jwtToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userId');
@@ -65,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (storedToken) {
       token.value = storedToken;
       userRole.value = storedRole || '';
-      userId.value = storedUserId || null;
+      userId.value = storedUserId || null; // Cargar como string | null
       isLoggedIn.value = true;
       console.log('Initialized with userId:', userId.value);
     } else {
@@ -76,29 +75,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => userRole.value === 'ROLE_ADMIN');
   const isPractitioner = computed(() => userRole.value === 'ROLE_PRACTITIONER');
 
-  const checkPractitionerProfile = async (): Promise<boolean> => {
-    if (!isPractitioner.value) {
-        console.log('User is not a practitioner, skipping profile check.');
-        return false;
-    }
-    if (!userId.value) {
-        console.warn('userId es null o undefined, no se puede verificar el perfil del practicante.');
-        hasPractitionerProfile.value = false;
-        return false;
-    }
-    try {
-        console.log(`Verificando perfil para userId: ${userId.value}`);
-        const response = await api.get(`/practitioners/user/${userId.value}/profile`);
-        console.log('Respuesta del perfil:', response);
-        hasPractitionerProfile.value = !!response.data && response.status === 200;
-        console.log(`hasPractitionerProfile: ${hasPractitionerProfile.value}`);
-        return hasPractitionerProfile.value;
-    } catch (error) {
-        console.error('Error al verificar el perfil del practicante:', error);
-        hasPractitionerProfile.value = false;
-        return false;
-    }
-};
+  // Asegúrate de que esta función 'checkPractitionerProfile' ya no está si no la necesitas
+  // en el authStore, y que la lógica de carga del perfil está en PractitionerProfile.vue
+  // const checkPractitionerProfile = async (): Promise<boolean> => { /* ... */ };
 
   initialize();
 
@@ -110,9 +89,10 @@ export const useAuthStore = defineStore('auth', () => {
     userId,
     isAdmin,
     isPractitioner,
-    hasPractitionerProfile,
     login,
     logout,
-    checkPractitionerProfile,
   };
 });
+
+// ¡IMPORTANTE! No debe haber NINGUNA definición de interfaz aquí abajo.
+// Todas deben estar en src/types/auth.ts

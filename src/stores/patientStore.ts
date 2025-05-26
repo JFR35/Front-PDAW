@@ -1,118 +1,184 @@
-/**
- * Gestiona las operaciones y mantiene el estado sincronizado
- * con el servidor
- */
-import { defineStore } from 'pinia'
-import api from '@/services/apiService'
-import type { Patient } from '@/types/patientTyped'
+// src/stores/patientStore.ts
+import { defineStore } from 'pinia';
+import api from '@/services/apiService';
+import type { FhirPatientEntity, FhirPatient } from '@/types/PatientTyped'; // Asegúrate que la ruta sea correcta
+import { AxiosError } from 'axios';
 
 interface PatientState {
-  patients: Patient[]
-  currentPatient: Patient | null
-  loading: boolean
-  error: string | null
+  patients: FhirPatient[]; // Almacenaremos FhirPatient directamente para la UI
+  loading: boolean;
+  error: string | null;
 }
 
-export const usePatientStore = defineStore('patients', {
+function validatePatient(patient: FhirPatient): boolean {
+  // Validaciones basadas en tu StructureDefinition y JSON de ejemplo
+  if (!patient.identifier || patient.identifier.length === 0 || !patient.identifier[0].value || !patient.identifier[0].system) return false;
+  if (!patient.name || patient.name.length === 0 || !patient.name[0].family || !patient.name[0].given || patient.name[0].given.length === 0) return false;
+  if (!patient.gender) return false;
+  if (!patient.birthDate) return false;
+
+  // Añade aquí cualquier otra validación requerida por tu StructureDefinition o lógica de negocio
+  // Por ejemplo, si telecom o address fueran obligatorios en Patient, los añadirías aquí.
+
+  return true;
+}
+
+export const usePatientStore = defineStore('patientStore', {
   state: (): PatientState => ({
     patients: [],
-    currentPatient: null,
     loading: false,
     error: null,
   }),
-  getters: {
-    getPatientById: (state) => (id: number) => {
-      return state.patients.find((patient) => patient.id === id)
-    },
-    totalPatients: (state) => state.patients.length,
-  },
+
   actions: {
-    async fetchPatients() {
+    /**
+     * Carga todos los pacientes del backend.
+     * Asume que el backend GET /api/patients devuelve List<PatientMasterIndex>.
+     * Necesitamos mapear eso a FhirPatient.
+     */
+    async loadPatients() {
       this.loading = true;
       this.error = null;
-
       try {
-        const response = await api.get('/patients');
-        this.patients = response.data.map((p) => {
-          const parsedPatient = JSON.parse(p.resourcePatientJson); // Deserializa el JSON
-          return {
-            id: p.id,
-            name: parsedPatient.name || [{ given: ['Sin Nombre'], family: '' }],
-            gender: parsedPatient.gender || 'unknown',
-            birthDate: parsedPatient.birthDate || 'No disponible',
-            identifier: parsedPatient.identifier || [{ value: 'N/A', system: 'unknown' }],
-            text: parsedPatient.text || { div: '', status: 'generated' },
-            resourceType: parsedPatient.resourceType || 'Patient',
-          };
-        });
-      } catch (error) {
-        this.error = 'Error al cargar los pacientes';
-        console.error('Error fetching patients:', error);
-      } finally {
+        const response = await api.get<FhirPatientEntity[]>('/patients'); // Asume que la URL es /api/patients
+        // Mapear PatientMasterIndex a FhirPatient para el estado del store
+        this.patients = response.data
+          .filter(pmi => pmi.parsedPatient) // Asegúrate de que parsedPatient exista
+          .map(pmi => pmi.parsedPatient as FhirPatient); // Castear a FhirPatient
         this.loading = false;
-      }
-    },
-
-
-    async createPatient(patientData: Omit<Patient, 'id'>) {
-      this.loading = true;
-      try {
-        const fhirPatient: Patient = {
-          ...patientData,
-          resourceType: 'Patient',
-          text: {
-            status: 'generated',
-            div: `<div xmlns="http://www.w3.org/1999/xhtml">
-              <p>Nombre: ${patientData.name?.[0]?.given?.join(' ') || 'Sin Nombre'} ${patientData.name?.[0]?.family || ''}</p>
-              <p>Identificador: ${patientData.identifier?.[0]?.value || 'N/A'}</p>
-              <p>Género: ${patientData.gender || 'unknown'}</p>
-              <p>Fecha de Nacimiento: ${patientData.birthDate || 'No disponible'}</p>
-            </div>`,
-          },
-        };
-
-        const response = await api.post<Patient>('/patients', fhirPatient);
-        this.patients.push(response.data);
-        return response.data;
       } catch (error: any) {
-        this.error = error.response?.data?.message || 'Error al crear el paciente';
-        console.error('Error creating patient:', error);
-        throw error;
+        this.loading = false;
+        this.error = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al cargar los pacientes.';
+      }
+    },
+
+    /**
+     * Crea un nuevo paciente en el backend.
+     * Backend: POST /api/patients?nationalId={nationalId} con FHIR JSON en el body.
+     */
+     async createPatient(patientData: FhirPatient): Promise<FhirPatient | null> {
+      this.loading = true;
+      this.error = null;
+      try {
+        const nationalId = patientData.identifier?.[0]?.value;
+        if (!nationalId) {
+          this.error = 'El identificador nacional (nationalId) del paciente es obligatorio.';
+          throw new Error(this.error);
+        }
+
+        const patientJson = JSON.stringify(patientData);
+
+        const response = await api.post<FhirPatientEntity>(`/patients?nationalId=${nationalId}`, patientJson, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.data && response.data.parsedPatient) {
+          this.patients.push(response.data.parsedPatient);
+          return response.data.parsedPatient;
+        } else {
+          this.error = 'El backend no devolvió un paciente válido.';
+          return null;
+        }
+      } catch (error: unknown) {
+        this.error = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al crear el paciente.';
+        return null;
       } finally {
         this.loading = false;
       }
     },
 
-    async updatePatient(patientData: Patient) {
-      this.loading = true
+    /**
+     * Obtiene un paciente por su nationalId.
+     * Backend: GET /api/patients/{nationalId} devuelve PatientMasterIndex.
+     */
+    async getPatientByNationalId(nationalId: string): Promise<FhirPatient | null> {
+      this.loading = true;
+      this.error = null;
       try {
-        const response = await api.put<Patient>(`/patients/${patientData.id}`, patientData)
-        const index = this.patients.findIndex((p) => p.id === patientData.id)
-        if (index !== -1) {
-          this.patients[index] = response.data
+        const response = await api.get<FhirPatientEntity>(`/patients/${nationalId}`); // Asume que la URL es /api/patients/{nationalId}
+        if (response.data && response.data.parsedPatient) {
+          return response.data.parsedPatient;
+        } else {
+          console.warn(`Paciente con nationalId ${nationalId} encontrado pero sin parsedPatient.`);
+          return null;
         }
-        return response.data
-      } catch (error) {
-        this.error = 'Error al actualizar el paciente'
-        console.error('Error updating patient:', error)
-        throw error
+      } catch (error: unknown) {
+        if (error instanceof AxiosError && error.response?.status === 404) {
+          console.warn(`Paciente con nationalId ${nationalId} no encontrado (404).`);
+          return null;
+        }
+        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al obtener el paciente.';
+        this.error = errorMessage;
+        throw new Error(errorMessage);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async deletePatient(id: number) {
-      this.loading = true
+    /**
+     * Actualiza un paciente existente.
+     * Backend: PUT /api/patients/{nationalId} espera PatientMasterIndex en el body.
+     *
+     * NOTA IMPORTANTE: Al igual que con Practitioner, si tu backend PUT espera
+     * PatientMasterIndex y quieres actualizar el recurso FHIR completo en Aidbox,
+     * el backend PUT /api/patients/{nationalId} debería aceptar 'String fhirPatientJson'
+     * en el @RequestBody, no 'PatientMasterIndex'.
+     */
+    async updatePatient(nationalId: string, patientData: FhirPatient): Promise<FhirPatient | null> {
+      this.loading = true;
+      this.error = null;
+      if (!validatePatient(patientData)) {
+        this.error = 'Los datos del paciente no cumplen los requisitos mínimos para la actualización.';
+        throw new Error(this.error);
+      }
       try {
-        await api.delete(`/patients/${id}`)
-        this.patients = this.patients.filter((patient) => patient.id !== id)
-      } catch (error) {
-        this.error = `Error al eliminar el paciente con ID: ${id}`
-        console.error(`Error deleting patient with ${id}:`, error)
-        throw error
+        const patientJson = JSON.stringify(patientData); // Envía el FHIR JSON completo
+
+        const response = await api.put<FhirPatientEntity>(`/patients/${nationalId}`, patientJson, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        // Actualizar el estado del store
+        const index = this.patients.findIndex(p => p.identifier?.[0]?.value === nationalId);
+        if (index !== -1 && response.data.parsedPatient) {
+          this.patients[index] = response.data.parsedPatient;
+        }
+        this.loading = false;
+        return response.data.parsedPatient || null;
+      } catch (error: unknown) {
+        this.loading = false;
+        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al actualizar el paciente.';
+        this.error = errorMessage;
+        throw new Error(errorMessage);
       } finally {
-        this.loading = false
+        this.loading = false;
+      }
+    },
+
+    /**
+     * Elimina un paciente por su nationalId.
+     * Backend: DELETE /api/patients/{nationalId}
+     */
+    async deletePatient(nationalId: string): Promise<void> {
+      this.loading = true;
+      this.error = null;
+      try {
+        await api.delete(`/patients/${nationalId}`);
+        this.patients = this.patients.filter(p => p.identifier?.[0]?.value !== nationalId);
+        this.loading = false;
+      } catch (error: unknown) {
+        this.loading = false;
+        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al eliminar el paciente.';
+        this.error = errorMessage;
+        throw new Error(errorMessage);
+      } finally {
+        this.loading = false;
       }
     },
   },
-})
+
+});
