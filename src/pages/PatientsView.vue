@@ -1,55 +1,87 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
+import { useAuthStore } from '@/stores/authStore';
 import { usePatientStore } from '@/stores/patientStore';
-import type { Patient } from '@/types/patientTyped';
-import { emptyPatient } from '@/types/patientTyped';
+import type { FhirPatient } from '@/types/PatientTyped';
+import { emptyPatient } from '@/types/PatientTyped';
+//import { AxiosError } from 'axios'; // Importar AxiosError para tipado específico, aunque el catch general use 'any'
 
 const patientStore = usePatientStore();
+const authStore = useAuthStore(); // Asegúrate de que authStore está importado si lo usas
 const activeTab = ref('list');
-const selectedPatient = ref<Patient>(structuredClone(emptyPatient));
+const selectedPatient = ref<FhirPatient>(structuredClone(emptyPatient));
 const isSubmitting = ref(false);
-const formError = ref('');
+const formError = ref(''); // Esta variable ya existe y se usa para errores del formulario/store
 
 // Cargar pacientes al montar el componente
 onMounted(async () => {
-  await patientStore.fetchPatients();
+  // Cargar pacientes al inicio
+  await patientStore.loadPatients(); // ¡Importante para poblar la tabla!
+
+  // --- ELIMINADO EL BLOQUE QUE CAUSABA EL ERROR ---
+  // La lógica de verificación de perfil de practicante no va aquí.
+  // Si necesitas controlar el acceso a esta página, usa Vue Router Guards.
 });
 
 // Funciones de navegación
-const showList = () => (activeTab.value = 'list');
+const showList = () => {
+  activeTab.value = 'list';
+  formError.value = ''; // Limpiar errores al cambiar de vista
+  patientStore.error = null; // Limpiar errores del store
+};
+
 const showCreateForm = () => {
   activeTab.value = 'form';
   selectedPatient.value = structuredClone(emptyPatient);
+  formError.value = '';
+  patientStore.error = null;
 };
-const showEditForm = (patient: Patient) => {
+
+const showEditForm = (patient: FhirPatient) => {
   activeTab.value = 'form';
   selectedPatient.value = structuredClone(patient);
+  formError.value = '';
+  patientStore.error = null;
 };
-const showDetails = (patient: Patient) => {
+
+const showDetails = (patient: FhirPatient) => {
   activeTab.value = 'details';
   selectedPatient.value = structuredClone(patient);
+  formError.value = '';
+  patientStore.error = null;
 };
 
 // Guardar paciente
 const savePatient = async () => {
-  if (!selectedPatient.value) return;
+  // Una validación rápida antes de enviar (el store hará una más completa)
+  if (!selectedPatient.value.identifier?.[0]?.value ||
+      !selectedPatient.value.name?.[0]?.given?.[0] ||
+      !selectedPatient.value.name?.[0]?.family ||
+      !selectedPatient.value.gender ||
+      !selectedPatient.value.birthDate) {
+    formError.value = 'Por favor, complete todos los campos obligatorios del paciente.';
+    return;
+  }
 
   isSubmitting.value = true;
   formError.value = '';
 
   try {
-    if (!selectedPatient.value.id) {
+    if (!selectedPatient.value.id) { // Si no tiene un ID de FHIR, es una creación
       await patientStore.createPatient(selectedPatient.value);
-    } else {
-      await patientStore.updatePatient(selectedPatient.value);
+    } else { // Si ya tiene un ID de FHIR, es una actualización
+      const patientNationalId = selectedPatient.value.identifier?.[0]?.value;
+      if (!patientNationalId) {
+        formError.value = 'No se encontró el identificador nacional para la actualización.';
+        return; // Detener la ejecución si no hay nationalId
+      }
+      await patientStore.updatePatient(patientNationalId, selectedPatient.value);
     }
-    showList();
-    await patientStore.fetchPatients();
-  } catch (error: AxiosError<{ message?: string }>) {
-    // Access Axios-specific properties
+    showList(); // Volver a la lista después de guardar
+  } catch (error: any) {
     formError.value =
-      error.response?.data?.message ||
-      error.message ||
+      (error.response?.data?.message) ||
+      (error.message) ||
       'Error al guardar el paciente. Por favor intente nuevamente.';
     console.error('Error saving patient:', error);
   } finally {
@@ -58,21 +90,31 @@ const savePatient = async () => {
 };
 
 // Eliminar paciente
-const deletePatient = async (patientToDelete: Patient) => {
-  if (!patientToDelete?.id) return;
+const deletePatient = async (patientToDelete: FhirPatient) => {
+  const patientNationalId = patientToDelete.identifier?.[0]?.value;
+  if (!patientNationalId) {
+    formError.value = 'No se encontró el identificador nacional para eliminar.';
+    return;
+  }
+
+  // Opcional: Confirmación de eliminación con un modal o confirm()
+  if (!confirm(`¿Está seguro de que desea eliminar al paciente con DNI: ${patientNationalId}?`)) {
+    return;
+  }
 
   isSubmitting.value = true;
   formError.value = '';
 
   try {
-    await patientStore.deletePatient(patientToDelete.id);
-    showList();
-    await patientStore.fetchPatients();
-  } catch (error: AxiosError<{ message?: string }>) {
-    // Access Axios-specific properties
+    await patientStore.deletePatient(patientNationalId);
+    showList(); // Volver a la lista
+    // No es estrictamente necesario cargar de nuevo si el filtro en el store es reactivo,
+    // pero asegura la coherencia si hay múltiples usuarios o cambios externos.
+    // patientStore.loadPatients(); // El store ya lo debería haber eliminado de su array
+  } catch (error: any) {
     formError.value =
-      error.response?.data?.message ||
-      error.message ||
+      (error.response?.data?.message) ||
+      (error.message) ||
       'Error al eliminar el paciente. Por favor intente nuevamente.';
     console.error('Error deleting patient:', error);
   } finally {
@@ -101,15 +143,15 @@ const fullName = computed(() => {
   return '';
 });
 
-// Edad actual computada para el formulario
+// Edad actual computada para el formulario y detalles
 const currentAge = computed(() => {
   return selectedPatient.value?.birthDate ? calculateAge(selectedPatient.value.birthDate) : '';
 });
+
 </script>
 
 <template>
   <div class="patient-container">
-    <!-- Breadcrumb -->
     <div class="container-fluid py-3 bg-light border-bottom">
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
@@ -125,7 +167,6 @@ const currentAge = computed(() => {
       </nav>
     </div>
 
-    <!-- Main Content -->
     <div class="container-fluid py-4">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -134,30 +175,22 @@ const currentAge = computed(() => {
           </h2>
           <p class="text-muted mb-0">Administra los registros médicos de pacientes</p>
         </div>
-        <button
-          v-if="activeTab === 'list'"
-          @click="showCreateForm"
-          class="btn btn-primary"
-        >
+        <button v-if="activeTab === 'list'" @click="showCreateForm" class="btn btn-primary">
           <i class="bi bi-plus-circle me-2"></i> Nuevo Paciente
         </button>
-        <button
-          v-else
-          @click="showList"
-          class="btn btn-outline-secondary"
-        >
+        <button v-else @click="showList" class="btn btn-outline-secondary">
           <i class="bi bi-arrow-left me-2"></i> Volver
         </button>
       </div>
 
-      <!-- Alert Messages -->
-      <div v-if="formError" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+      <div v-if="formError || patientStore.error"
+        class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {{ formError }}
-        <button type="button" class="btn-close" @click="formError = ''"></button>
+        {{ formError || patientStore.error }}
+        <button type="button" class="btn-close" @click="formError = ''; patientStore.error = null;"></button>
       </div>
 
-      <!-- List View -->
+
       <div v-if="activeTab === 'list'">
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
@@ -171,7 +204,6 @@ const currentAge = computed(() => {
           </div>
 
           <div class="card-body p-0">
-            <!-- Loading State -->
             <div v-if="patientStore.loading" class="d-flex justify-content-center align-items-center py-5">
               <div class="text-center">
                 <div class="spinner-border text-primary mb-3" role="status">
@@ -181,8 +213,8 @@ const currentAge = computed(() => {
               </div>
             </div>
 
-            <!-- Empty State -->
-            <div v-else-if="patientStore.patients.length === 0" class="d-flex flex-column justify-content-center align-items-center py-5 text-center">
+            <div v-else-if="patientStore.patients.length === 0"
+              class="d-flex flex-column justify-content-center align-items-center py-5 text-center">
               <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
               <h5 class="mt-3 text-muted">No hay pacientes registrados</h5>
               <button @click="showCreateForm" class="btn btn-primary mt-3">
@@ -190,7 +222,6 @@ const currentAge = computed(() => {
               </button>
             </div>
 
-            <!-- Data Table -->
             <div v-else class="table-container">
               <table class="table table-hover align-middle mb-0">
                 <thead class="table-light sticky-top">
@@ -204,7 +235,8 @@ const currentAge = computed(() => {
                 </thead>
                 <tbody>
                   <tr v-for="patient in patientStore.patients" :key="patient.id" class="patient-row">
-                    <td class="ps-4 fw-medium">{{ patient.identifier?.length ? patient.identifier[0].value : 'N/A' }}</td>
+                    <td class="ps-4 fw-medium">{{ patient.identifier?.length ? patient.identifier[0].value : 'N/A' }}
+                    </td>
                     <td>
                       {{ patient.name?.[0]?.given?.join(' ') || 'Sin Nombre' }}
                       {{ patient.name?.[0]?.family || '' }}
@@ -218,33 +250,21 @@ const currentAge = computed(() => {
                       }">
                         {{
                           patient.gender === 'male' ? 'M' :
-                          patient.gender === 'female' ? 'F' :
-                          patient.gender === 'other' ? 'O' : '?'
+                            patient.gender === 'female' ? 'F' :
+                              patient.gender === 'other' ? 'O' : '?'
                         }}
                       </span>
                     </td>
                     <td>{{ patient.birthDate }}</td>
                     <td class="text-end pe-4">
                       <div class="btn-group btn-group-sm" role="group">
-                        <button
-                          @click="showDetails(patient)"
-                          class="btn btn-outline-primary"
-                          title="Ver detalles"
-                        >
+                        <button @click="showDetails(patient)" class="btn btn-outline-primary" title="Ver detalles">
                           <i class="bi bi-eye-fill"></i>
                         </button>
-                        <button
-                          @click="showEditForm(patient)"
-                          class="btn btn-outline-warning"
-                          title="Editar"
-                        >
+                        <button @click="showEditForm(patient)" class="btn btn-outline-warning" title="Editar">
                           <i class="bi bi-pencil-fill"></i>
                         </button>
-                        <button
-                          @click="deletePatient(patient)"
-                          class="btn btn-outline-danger"
-                          title="Eliminar"
-                        >
+                        <button @click="deletePatient(patient)" class="btn btn-outline-danger" title="Eliminar">
                           <i class="bi bi-trash-fill"></i>
                         </button>
                       </div>
@@ -257,7 +277,6 @@ const currentAge = computed(() => {
         </div>
       </div>
 
-      <!-- Form View -->
       <div v-else-if="activeTab === 'form'" class="row justify-content-center">
         <div class="col-lg-8">
           <div class="card border-0 shadow-sm">
@@ -271,7 +290,6 @@ const currentAge = computed(() => {
             <div class="card-body pt-1">
               <form @submit.prevent="savePatient" class="needs-validation" novalidate>
                 <div class="row g-3">
-                  <!-- Identification Section -->
                   <div class="col-12">
                     <h6 class="fw-semibold mb-3 border-bottom pb-2">Identificación</h6>
                   </div>
@@ -282,14 +300,8 @@ const currentAge = computed(() => {
                       <span class="input-group-text bg-light">
                         <i class="bi bi-tag-fill text-muted"></i>
                       </span>
-                      <input
-                        id="identifierSystem"
-                        type="text"
-                        class="form-control"
-                        v-model="selectedPatient.identifier[0].system"
-                        required
-                        placeholder="Ej: sistema-nacional"
-                      />
+                      <input id="identifierSystem" type="text" class="form-control"
+                        v-model="selectedPatient.identifier[0].system" required placeholder="Ej: sistema-nacional" />
                     </div>
                   </div>
 
@@ -299,18 +311,13 @@ const currentAge = computed(() => {
                       <span class="input-group-text bg-light">
                         <i class="bi bi-123 text-muted"></i>
                       </span>
-                      <input
-                        id="identifierValue"
-                        type="text"
-                        class="form-control"
-                        v-model="selectedPatient.identifier[0].value"
-                        required
-                        placeholder="Ej: 12345678"
-                      />
+                      <input id="identifierValue" type="text" class="form-control"
+                        v-model="selectedPatient.identifier[0].value" required placeholder="Ej: 90931948M" />
+                    </div>
+                    <div class="invalid-feedback" v-if="!selectedPatient.identifier[0].value">El número es obligatorio.
                     </div>
                   </div>
 
-                  <!-- Personal Info Section -->
                   <div class="col-12 mt-4">
                     <h6 class="fw-semibold mb-3 border-bottom pb-2">Información Personal</h6>
                   </div>
@@ -321,14 +328,8 @@ const currentAge = computed(() => {
                       <span class="input-group-text bg-light">
                         <i class="bi bi-person-fill text-muted"></i>
                       </span>
-                      <input
-                        id="givenName"
-                        type="text"
-                        class="form-control"
-                        v-model="selectedPatient.name[0].given[0]"
-                        required
-                        placeholder="Ej: Juan"
-                      />
+                      <input id="givenName" type="text" class="form-control" v-model="selectedPatient.name[0].given[0]"
+                        required placeholder="Ej: Juan" />
                     </div>
                   </div>
 
@@ -338,13 +339,8 @@ const currentAge = computed(() => {
                       <span class="input-group-text bg-light">
                         <i class="bi bi-person-fill text-muted"></i>
                       </span>
-                      <input
-                        id="familyName"
-                        type="text"
-                        class="form-control"
-                        v-model="selectedPatient.name[0].family"
-                        placeholder="Ej: Pérez"
-                      />
+                      <input id="familyName" type="text" class="form-control" v-model="selectedPatient.name[0].family"
+                        placeholder="Ej: Pérez" />
                     </div>
                   </div>
 
@@ -354,12 +350,7 @@ const currentAge = computed(() => {
                       <span class="input-group-text bg-light">
                         <i class="bi bi-gender-ambiguous text-muted"></i>
                       </span>
-                      <select
-                        id="gender"
-                        class="form-select"
-                        v-model="selectedPatient.gender"
-                        required
-                      >
+                      <select id="gender" class="form-select" v-model="selectedPatient.gender" required>
                         <option value="">Seleccionar género</option>
                         <option value="male">Masculino</option>
                         <option value="female">Femenino</option>
@@ -375,33 +366,19 @@ const currentAge = computed(() => {
                       <span class="input-group-text bg-light">
                         <i class="bi bi-calendar-date text-muted"></i>
                       </span>
-                      <input
-                        id="birthDate"
-                        type="date"
-                        class="form-control"
-                        v-model="selectedPatient.birthDate"
-                        required
-                      />
+                      <input id="birthDate" type="date" class="form-control" v-model="selectedPatient.birthDate"
+                        required />
                       <span class="input-group-text">Edad: {{ currentAge }} años</span>
                     </div>
                   </div>
 
-                  <!-- Submit Button -->
                   <div class="col-12 mt-4">
                     <div class="d-flex justify-content-end gap-2">
-                      <button
-                        type="button"
-                        @click="showList"
-                        class="btn btn-outline-secondary"
-                        :disabled="isSubmitting"
-                      >
+                      <button type="button" @click="showList" class="btn btn-outline-secondary"
+                        :disabled="isSubmitting">
                         Cancelar
                       </button>
-                      <button
-                        type="submit"
-                        class="btn btn-primary"
-                        :disabled="isSubmitting"
-                      >
+                      <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
                         <template v-if="isSubmitting">
                           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                           Guardando...
@@ -420,7 +397,6 @@ const currentAge = computed(() => {
         </div>
       </div>
 
-      <!-- Details View -->
       <div v-else-if="activeTab === 'details'" class="row justify-content-center">
         <div class="col-lg-8">
           <div class="card border-0 shadow-sm">
@@ -465,8 +441,8 @@ const currentAge = computed(() => {
                       }">
                         {{
                           selectedPatient.gender === 'male' ? 'Masculino' :
-                          selectedPatient.gender === 'female' ? 'Femenino' :
-                          selectedPatient.gender === 'other' ? 'Otro' : 'Desconocido'
+                            selectedPatient.gender === 'female' ? 'Femenino' :
+                              selectedPatient.gender === 'other' ? 'Otro' : 'Desconocido'
                         }}
                       </span>
                     </p>
@@ -499,7 +475,6 @@ const currentAge = computed(() => {
     </div>
   </div>
 </template>
-
 <style scoped>
 .patient-container {
   background-color: #f8f9fa;
@@ -537,7 +512,7 @@ const currentAge = computed(() => {
   transition: all 0.2s;
 }
 
-.form-control:focus + .input-group-text {
+.form-control:focus+.input-group-text {
   background-color: #e9ecef;
 }
 

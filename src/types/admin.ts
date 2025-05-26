@@ -11,7 +11,6 @@ export interface CreatePractitioner {
   email: string;
   password: string;
   specialty?: string;
-  phone?: string;
   address?: string;
 }
 

@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { usePractitionerStore } from '@/stores/practitionerStore';
 import { useRouter } from 'vue-router';
-import type { FhirPractitioner } from '@/types/FhirPractitioner';
+import type { FhirPractitioner } from '@/types/PractitionerTyped';
 
 // Define valid qualification codes from v2-2.7-0360
 const qualificationOptions = [
@@ -24,10 +24,8 @@ const profileData = ref<FhirPractitioner>({
   },
   identifier: [{ system: '', value: '' }],
   name: [{ given: [''], family: '' }],
-  telecom: [{ system: 'phone', value: '' }],
-  address: [],
   qualification: [{ code: { coding: [{ system: qualificationOptions[0].system, code: qualificationOptions[0].code, display: qualificationOptions[0].display }] } }],
-  gender: undefined,
+  gender: '',
   birthDate: '',
 });
 
@@ -35,17 +33,6 @@ const errorMessage = ref('');
 const successMessage = ref('');
 const isSubmitting = ref(false);
 const hasPractitionerProfile = ref(false);
-
-const updateQualification = (code: string) => {
-  const selectedOption = qualificationOptions.find(opt => opt.code === code);
-  if (selectedOption && profileData.value.qualification?.[0]?.code?.coding?.[0]) {
-    profileData.value.qualification[0].code.coding[0] = {
-      system: selectedOption.system,
-      code: selectedOption.code,
-      display: selectedOption.display
-    };
-  }
-};
 
 const saveProfile = async () => {
   isSubmitting.value = true;
@@ -87,15 +74,46 @@ const saveProfile = async () => {
 };
 
 onMounted(async () => {
-  if (authStore.isLoggedIn) {
-    try {
-      const hasProfile = await authStore.checkPractitionerProfile();
-      hasPractitionerProfile.value = hasProfile;
-    } catch (error: unknown) {
-      errorMessage.value = error instanceof Error ? error.message : 'Error al verificar el perfil.';
+  // Solo intentamos cargar el perfil si el usuario está logeado Y es un practicante
+  if (authStore.isLoggedIn && authStore.isPractitioner) {
+    errorMessage.value = null; // Limpiar errores previos
+
+    // ***** Lógica CLAVE para obtener el nationalId *****
+    // Aquí es donde necesitas asegurarte de que authStore.userId sea el nationalId
+    // O bien, tener un mecanismo para obtener el nationalId a partir del userId
+    const userIdFromAuth = authStore.userId; // Este es el ID del usuario de tu sistema de autenticación
+
+    if (userIdFromAuth) {
+      try {
+        // Asumiendo que tu `userId` de authStore es en realidad el `nationalId` para Aidbox
+        // Si NO LO ES, necesitarás un paso intermedio (ej. otro endpoint en backend)
+        const existingProfile = await practitionerStore.getPractitionerByNationalId(userIdFromAuth);
+
+        if (existingProfile) {
+          profileData.value = existingProfile; // Cargar datos existentes
+          hasPractitionerProfile.value = true;
+          console.log('Perfil de practicante cargado:', existingProfile);
+        } else {
+          // No se encontró perfil, se puede rellenar el nationalId si el usuario es nuevo
+          // Si el nationalId NO ES el userId, este paso puede necesitar una UX de "introduce tu nationalId"
+          profileData.value.identifier[0].value = userIdFromAuth; // Puedes pre-rellenar con el userId si es un nuevo practicante
+          hasPractitionerProfile.value = false;
+          console.log('No se encontró perfil de practicante. Preparando para crear uno nuevo.');
+        }
+      } catch (error: unknown) {
+        // Manejar errores de carga del perfil (e.g., error de red, backend no responde)
+        errorMessage.value = (error instanceof Error && error.message) || 'Error al cargar el perfil del practicante.';
+        console.error('Error al cargar perfil de practicante:', error);
+      }
+    } else {
+      errorMessage.value = 'ID de usuario no disponible para cargar el perfil del practicante.';
+      console.warn('authStore.userId es null o undefined, no se puede cargar el perfil del practicante.');
     }
   } else {
-    errorMessage.value = 'No se ha detectado la información del usuario. Por favor, inicie sesión nuevamente.';
+    // Si no está logeado o no es practicante, redirige o muestra un mensaje
+    errorMessage.value = 'Acceso denegado. Solo los profesionales pueden ver y gestionar su perfil.';
+    // Opcional: redirigir si no es un practicante
+    // router.push({ name: 'home' });
   }
 });
 </script>
@@ -191,7 +209,7 @@ onMounted(async () => {
                         v-model="profileData.identifier[0].value"
                         required
                         :disabled="isSubmitting"
-                        placeholder="Ej: 12345678"
+                        placeholder="Ej: 90931948M"
                       />
                     </div>
                     <div class="invalid-feedback" v-if="!profileData.identifier[0].value">El número es obligatorio.</div>
@@ -283,23 +301,6 @@ onMounted(async () => {
                     <div class="invalid-feedback" v-if="!profileData.birthDate">La fecha es obligatoria.</div>
                   </div>
 
-                  <div class="col-12">
-                    <label for="phone" class="form-label">Teléfono</label>
-                    <div class="input-group">
-                      <span class="input-group-text bg-light">
-                        <i class="bi bi-telephone-fill text-muted"></i>
-                      </span>
-                      <input
-                        id="phone"
-                        type="tel"
-                        class="form-control"
-                        v-model="profileData.telecom[0].value"
-                        :disabled="isSubmitting"
-                        placeholder="Ej: +34 600 123 456"
-                      />
-                    </div>
-                  </div>
-
                   <!-- Professional Info -->
                   <div class="col-12 mt-4">
                     <h6 class="fw-semibold mb-3 border-bottom pb-2">Información Profesional</h6>
@@ -318,7 +319,6 @@ onMounted(async () => {
                         v-model="profileData.qualification[0].code.coding[0].code"
                         required
                         :disabled="isSubmitting"
-                        @change="updateQualification($event.target.value)"
                       >
                         <option value="">Seleccionar cualificación</option>
                         <option v-for="option in qualificationOptions" :value="option.code" :key="option.code">
