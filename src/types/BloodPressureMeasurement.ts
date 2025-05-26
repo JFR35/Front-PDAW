@@ -11,3 +11,13 @@ export interface BloodPressureMeasurement {
   location: string;
   measuredBy?: string; // Opcional, si se implementa en el backend
 }
+export interface BloodPressureRecordRequest {
+  visitLocalId: number;
+  patientLocalId: number;
+  practitionerLocalId: number;
+  location: string;
+  measurementTime: string; // O Date, si manejas la conversión en frontend
+  systolic: number;
+  diastolic: number;
+  meanArterialPressure?: number;
+}
