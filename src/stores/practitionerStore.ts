@@ -1,19 +1,19 @@
 // src/stores/practitionerStore.ts
-import { defineStore } from 'pinia'
-import api from '@/services/apiService'
-import type { FhirPractitioner, FhirPractitionerEntity } from '@/types/PractitionerTyped'
-import { AxiosError } from 'axios'
+import { defineStore } from 'pinia';
+import api from '@/services/apiService';
+import type { FhirPractitioner, PractitionerResponseBackend } from '@/types/PractitionerTyped';
+import { AxiosError } from 'axios';
 
 interface PractitionerState {
-  practitioners: FhirPractitioner[]
-  loading: boolean
-  error: string | null
+  practitioners: FhirPractitioner[];
+  loading: boolean;
+  error: string | null;
 }
 
 function validatePractitioner(practitioner: FhirPractitioner): boolean {
-  if (!practitioner.identifier?.[0]?.value || !practitioner.identifier?.[0]?.system) return false
-  if (!practitioner.name?.[0]?.family || !practitioner.name?.[0]?.given?.[0]) return false
-  return true
+  if (!practitioner.identifier || practitioner.identifier.length === 0 || !practitioner.identifier[0].value) return false;
+  if (!practitioner.name || practitioner.name.length === 0 || !practitioner.name[0].family || !practitioner.name[0].given || practitioner.name[0].given.length === 0) return false;
+  return true;
 }
 
 export const usePractitionerStore = defineStore('practitionerStore', {
@@ -25,135 +25,152 @@ export const usePractitionerStore = defineStore('practitionerStore', {
 
   actions: {
     async loadPractitioners() {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
       try {
-        const response = await api.get<{ fhirPractitioner: string }[]>('/practitioners')
-        this.practitioners = response.data.map(
-          (item) => JSON.parse(item.fhirPractitioner) as FhirPractitioner,
-        )
-      } catch (error: any) {
-        this.error =
-          (error instanceof AxiosError && error.response?.data?.error) ||
-          'Error al cargar los profesionales.'
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async getPractitionerByNationalId(nationalId: string): Promise<FhirPractitioner | null> {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await api.get<{ fhirPractitioner: string }>(`/practitioners/${nationalId}`)
-        return JSON.parse(response.data.fhirPractitioner) as FhirPractitioner
-      } catch (error: any) {
-        if (error instanceof AxiosError && error.response?.status === 404) {
-          // 404 means not found, which is expected for new practitioners
-          return null
+        const response = await api.get<PractitionerResponseBackend[]>('/practitioners');
+        this.practitioners = response.data
+          .map((backendDto: PractitionerResponseBackend) => {
+            try {
+              const parsedPractitioner = JSON.parse(backendDto.fhirPractitionerJson) as FhirPractitioner;
+              if (!parsedPractitioner.id && backendDto.fhirId) {
+                parsedPractitioner.id = backendDto.fhirId;
+              }
+              if (!backendDto.nationalId || backendDto.nationalId === 'N/A') {
+                console.warn('Invalid nationalId in backend DTO:', backendDto);
+                return null;
+              }
+              parsedPractitioner.identifier = parsedPractitioner.identifier || [{ system: 'national', value: backendDto.nationalId }];
+              return parsedPractitioner;
+            } catch (e) {
+              console.error('Error parsing FHIR practitioner JSON:', e, backendDto);
+              return null;
+            }
+          })
+          .filter((practitioner): practitioner is FhirPractitioner => practitioner !== null);
+        if (this.practitioners.length === 0) {
+          this.error = 'No valid practitioners found in the database.';
         }
+      } catch (error: any) {
         this.error =
           (error instanceof AxiosError && error.response?.data?.error) ||
-          'Error al obtener el profesional.'
-        return null
+          'Error al cargar los profesionales.';
+        console.error('Error loading practitioners from backend:', error);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async createPractitioner(practitionerData: FhirPractitioner): Promise<FhirPractitioner | null> {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
       try {
-        const nationalId = practitionerData.identifier?.[0]?.value?.trim().toUpperCase()
+        const nationalId = practitionerData.identifier?.[0]?.value;
         if (!nationalId) {
-          throw new Error('El identificador nacional es obligatorio.')
+          this.error = 'El identificador nacional es obligatorio.';
+          throw new Error(this.error);
         }
-
-        if (!practitionerData.name?.[0]?.family || !practitionerData.name?.[0]?.given?.[0]) {
-          throw new Error('Nombre y apellido son obligatorios.')
-        }
-
-        console.log('Submitting practitioner data:', JSON.stringify(practitionerData, null, 2))
-
-        const response = await api.post<{ fhirId: string; localId: string; message: string }>(
-          `/practitioners?nationalId=${nationalId}`,
-          practitionerData,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-          },
-        )
-
-        if (response.data.fhirId) {
-          const createdPractitioner = { ...practitionerData, id: response.data.fhirId }
-          this.practitioners.push(createdPractitioner)
-          return createdPractitioner
-        }
-        throw new Error('No se recibió un ID válido del servidor.')
-      } catch (error: any) {
-        let errorMsg = 'Error al crear el profesional.'
-        if (error instanceof AxiosError) {
-          errorMsg = error.response?.data?.message || error.response?.data?.error || error.message
-          console.error('Backend error details:', error.response?.data)
-        }
-        this.error = errorMsg
-        return null
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updatePractitioner(
-      nationalId: string,
-      practitionerData: FhirPractitioner,
-    ): Promise<FhirPractitioner | null> {
-      this.loading = true
-      this.error = null
-      if (!validatePractitioner(practitionerData)) {
-        this.error = 'Datos inválidos.'
-        throw new Error(this.error)
-      }
-      try {
-        const practitionerJson = JSON.stringify(practitionerData)
-        await api.put(`/practitioners/${nationalId}`, practitionerJson, {
+        const practitionerJson = JSON.stringify(practitionerData);
+        const response = await api.post<PractitionerResponseBackend>(`/practitioners?nationalId=${nationalId}`, practitionerJson, {
           headers: { 'Content-Type': 'application/json' },
-        })
-        const index = this.practitioners.findIndex(
-          (p) => p.identifier?.[0]?.value?.toUpperCase() === nationalId.toUpperCase(),
-        )
-        if (index !== -1) {
-          this.practitioners[index] = practitionerData
+        });
+        let createdFhirPractitioner: FhirPractitioner;
+        try {
+          createdFhirPractitioner = JSON.parse(response.data.fhirPractitionerJson) as FhirPractitioner;
+          if (!createdFhirPractitioner.id && response.data.fhirId) {
+            createdFhirPractitioner.id = response.data.fhirId;
+          }
+        } catch (e) {
+          console.error('Error parsing created FHIR practitioner JSON:', e, response.data);
+          this.error = 'Profesional creado, pero hubo un error al procesar su información FHIR.';
+          return null;
         }
-        return practitionerData
+        this.practitioners.push(createdFhirPractitioner);
+        return createdFhirPractitioner;
       } catch (error: any) {
         this.error =
           (error instanceof AxiosError && error.response?.data?.error) ||
-          'Error al actualizar el profesional.'
-        return null
+          'Error al crear el profesional.';
+        return null;
       } finally {
-        this.loading = false
+        this.loading = false;
+      }
+    },
+
+    async getPractitionerByNationalId(nationalId: string): Promise<FhirPractitioner | null> {
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await api.get<PractitionerResponseBackend>(`/practitioners/${nationalId}`);
+        let fhirPractitioner: FhirPractitioner;
+        try {
+          fhirPractitioner = JSON.parse(response.data.fhirPractitionerJson) as FhirPractitioner;
+          if (!fhirPractitioner.id && response.data.fhirId) {
+            fhirPractitioner.id = response.data.fhirId;
+          }
+        } catch (e) {
+          console.error('Error parsing FHIR practitioner JSON:', e, response.data);
+          this.error = 'Error al procesar la información FHIR del profesional.';
+          return null;
+        }
+        return fhirPractitioner;
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.error) ||
+          'Error al obtener el profesional.';
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async updatePractitioner(nationalId: string, practitionerData: FhirPractitioner): Promise<FhirPractitioner | null> {
+      this.loading = true;
+      this.error = null;
+      if (!validatePractitioner(practitionerData)) {
+        this.error = 'Datos de profesional o identificador inválidos.';
+        throw new Error(this.error);
+      }
+      try {
+        const practitionerJsonString = JSON.stringify(practitionerData);
+        const response = await api.put<PractitionerResponseBackend>(`/practitioners/${nationalId}`, practitionerJsonString, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const updatedFhirPractitioner = JSON.parse(response.data.fhirPractitionerJson) as FhirPractitioner;
+        if (!updatedFhirPractitioner.id && response.data.fhirId) {
+          updatedFhirPractitioner.id = response.data.fhirId;
+        }
+        const index = this.practitioners.findIndex((p) => p.identifier?.[0]?.value === nationalId);
+        if (index !== -1) {
+          this.practitioners[index] = updatedFhirPractitioner;
+        }
+        return updatedFhirPractitioner;
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.error) ||
+          'Error al actualizar el profesional.';
+        return null;
+      } finally {
+        this.loading = false;
       }
     },
 
     async deletePractitioner(nationalId: string): Promise<void> {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
       try {
-        await api.delete(`/practitioners/${nationalId}`)
-        this.practitioners = this.practitioners.filter(
-          (p) => p.identifier?.[0]?.value?.toUpperCase() !== nationalId.toUpperCase(),
-        )
-      } catch (error: any) {
-        this.error =
-          (error instanceof AxiosError && error.response?.data?.error) ||
-          'Error al eliminar el profesional.'
-        throw new Error(this.error)
+        await api.delete(`/practitioners/${nationalId}`);
+        this.practitioners = this.practitioners.filter((p) => p.identifier?.[0]?.value !== nationalId);
+      } catch (error: unknown) {
+        const errorMessage =
+          (error instanceof AxiosError && error.response?.data?.message) ||
+          (error instanceof Error && error.message) ||
+          'Error al eliminar el profesional.';
+        this.error = errorMessage;
+        throw new Error(errorMessage);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
   },
-})
+});
