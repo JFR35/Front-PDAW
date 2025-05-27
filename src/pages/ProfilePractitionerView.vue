@@ -5,7 +5,6 @@ import { usePractitionerStore } from '@/stores/practitionerStore';
 import { useRouter } from 'vue-router';
 import type { FhirPractitioner } from '@/types/PractitionerTyped';
 
-// Define valid qualification codes from v2-2.7-0360
 const qualificationOptions = [
   { code: 'MD', display: 'Doctor of Medicine', system: 'http://terminology.hl7.org/CodeSystem/v2-0360' },
   { code: 'RN', display: 'Registered Nurse', system: 'http://terminology.hl7.org/CodeSystem/v2-0360' },
@@ -72,48 +71,55 @@ const saveProfile = async () => {
     isSubmitting.value = false;
   }
 };
-
 onMounted(async () => {
-  // Solo intentamos cargar el perfil si el usuario está logeado Y es un practicante
-  if (authStore.isLoggedIn && authStore.isPractitioner) {
-    errorMessage.value = null; // Limpiar errores previos
-
-    // ***** Lógica CLAVE para obtener el nationalId *****
-    // Aquí es donde necesitas asegurarte de que authStore.userId sea el nationalId
-    // O bien, tener un mecanismo para obtener el nationalId a partir del userId
-    const userIdFromAuth = authStore.userId; // Este es el ID del usuario de tu sistema de autenticación
-
-    if (userIdFromAuth) {
-      try {
-        // Asumiendo que tu `userId` de authStore es en realidad el `nationalId` para Aidbox
-        // Si NO LO ES, necesitarás un paso intermedio (ej. otro endpoint en backend)
-        const existingProfile = await practitionerStore.getPractitionerByNationalId(userIdFromAuth);
-
-        if (existingProfile) {
-          profileData.value = existingProfile; // Cargar datos existentes
-          hasPractitionerProfile.value = true;
-          console.log('Perfil de practicante cargado:', existingProfile);
-        } else {
-          // No se encontró perfil, se puede rellenar el nationalId si el usuario es nuevo
-          // Si el nationalId NO ES el userId, este paso puede necesitar una UX de "introduce tu nationalId"
-          profileData.value.identifier[0].value = userIdFromAuth; // Puedes pre-rellenar con el userId si es un nuevo practicante
-          hasPractitionerProfile.value = false;
-          console.log('No se encontró perfil de practicante. Preparando para crear uno nuevo.');
-        }
-      } catch (error: unknown) {
-        // Manejar errores de carga del perfil (e.g., error de red, backend no responde)
-        errorMessage.value = (error instanceof Error && error.message) || 'Error al cargar el perfil del practicante.';
-        console.error('Error al cargar perfil de practicante:', error);
-      }
-    } else {
-      errorMessage.value = 'ID de usuario no disponible para cargar el perfil del practicante.';
-      console.warn('authStore.userId es null o undefined, no se puede cargar el perfil del practicante.');
-    }
-  } else {
-    // Si no está logeado o no es practicante, redirige o muestra un mensaje
+  if (!authStore.isLoggedIn || !authStore.isPractitioner) {
     errorMessage.value = 'Acceso denegado. Solo los profesionales pueden ver y gestionar su perfil.';
-    // Opcional: redirigir si no es un practicante
-    // router.push({ name: 'home' });
+    return;
+  }
+
+  const userIdFromAuth = authStore.userId;
+  if (!userIdFromAuth) {
+    errorMessage.value = 'ID de usuario no disponible para cargar el perfil del practicante.';
+    return;
+  }
+
+  try {
+    // Try to get practitioner by national ID (using userId as fallback)
+    const nationalIdToSearch = authStore.userNationalId || userIdFromAuth;
+    const existingProfile = await practitionerStore.getPractitionerByNationalId(nationalIdToSearch);
+
+    if (existingProfile) {
+      profileData.value = existingProfile;
+      hasPractitionerProfile.value = true;
+    } else {
+      // Initialize new practitioner profile
+      profileData.value = {
+        resourceType: 'Practitioner',
+        meta: {
+          profile: ['http://myhealthapp.org/fhir/StructureDefinition/mi-practitioner-persistencia'],
+        },
+        identifier: [{
+          system: 'http://myhealthapp.org/fhir/identifier/national-id',
+          value: nationalIdToSearch
+        }],
+        name: [{ given: [''], family: '' }],
+        qualification: [{
+          code: {
+            coding: [{
+              system: qualificationOptions[0].system,
+              code: qualificationOptions[0].code,
+              display: qualificationOptions[0].display
+            }]
+          }
+        }],
+        gender: '',
+        birthDate: '',
+      };
+      hasPractitionerProfile.value = false;
+    }
+  } catch (error) {
+    errorMessage.value = 'Error al cargar el perfil del practicante.';
+    console.error('Error loading practitioner profile:', error);
   }
 });
 </script>
