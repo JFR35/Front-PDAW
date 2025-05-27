@@ -1,39 +1,20 @@
-// src/stores/bloodPressureStore.ts
-import { defineStore } from 'pinia';
-import api from '@/services/apiService';
-import { AxiosError } from 'axios';
-import type { BloodPressureRecordRequest } from '@/types/Visit';
+// src/types/VisitTyped.ts (Ensure these interfaces are correct)
 
-interface BloodPressureState {
-  loading: boolean;
-  error: string | null;
+export interface BloodPressureMeasurement {
+  date?: string; // ISO 8601 string, e.g., "2025-05-27T10:00:00Z"
+  systolicMagnitude?: number;
+  systolicUnit: string; // "mm[Hg]"
+  diastolicMagnitude?: number;
+  diastolicUnit: string; // "mm[Hg]"
+  location?: string;
+  measuredBy?: string; // Name of the practitioner or who took the measurement
 }
 
-export const useBloodPressureStore = defineStore('bloodPressureStore', {
-  state: (): BloodPressureState => ({
-    loading: false,
-    error: null,
-  }),
+export interface VisitRequestFrontend {
+  patientNationalId: string;
+  practitionerNationalId: string;
+  visitDate?: string; // Optional, ISO 8601 format
+  bloodPressureMeasurement?: BloodPressureMeasurement; // Optional, if the visit includes a measurement
+}
 
-  actions: {
-    /**
-     * Saves a new blood pressure measurement for a patient.
-     * @param nationalId The patient's national ID (e.g., "12345678D").
-     * @param data The measurement data.
-     */
-    async addBloodPressureMeasurement(nationalId: string, data: BloodPressureRecordRequest) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const response = await api.post(`/observations/blood-pressure/${nationalId}`, data);
-        this.loading = false;
-        return response.data; // Returns { compositionId, visitLocalId }
-      } catch (error: unknown) {
-        this.loading = false;
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error saving blood pressure measurement.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
-      }
-    },
-  },
-});
+// ... other VisitResponseBackend, Visit interfaces as defined previously

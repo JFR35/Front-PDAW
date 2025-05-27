@@ -1,94 +1,100 @@
 // src/stores/visitStore.ts
 import { defineStore } from 'pinia';
 import api from '@/services/apiService';
+import type { VisitRequestFrontend, VisitResponseBackend, Visit } from '@/types/VisitTyped';
 import { AxiosError } from 'axios';
-import type { Visit, VisitWithMeasurement } from '@/types/Visit';
 
 interface VisitState {
   visits: Visit[];
-  selectedVisit: VisitWithMeasurement | null;
+  currentVisit: Visit | null;
   loading: boolean;
   error: string | null;
+}
+
+function mapVisitResponseToVisit(backendDto: VisitResponseBackend): Visit {
+  return {
+    uuid: backendDto.visitUuid,
+    patientNationalId: backendDto.patientNationalId,
+    practitionerNationalId: backendDto.practitionerNationalId,
+    practitionerName: backendDto.practitionerName,
+    date: new Date(backendDto.visitDate),
+    bloodPressureCompositionId: backendDto.bloodPressureCompositionId,
+  };
 }
 
 export const useVisitStore = defineStore('visitStore', {
   state: (): VisitState => ({
     visits: [],
-    selectedVisit: null,
+    currentVisit: null,
     loading: false,
     error: null,
   }),
 
   actions: {
-    /**
-     * Loads visits for a patient by their local ID.
-     * @param patientLocalId The local ID of the patient.
-     */
-    async loadVisitsByPatient(patientLocalId: number) {
+    async createVisitWithBloodPressure(requestData: VisitRequestFrontend): Promise<Visit | null> {
       this.loading = true;
       this.error = null;
       try {
-        const response = await api.get<Visit[]>(`/visits/patient/${patientLocalId}`);
-        this.visits = response.data;
+        const response = await api.post<VisitResponseBackend>('/visits', requestData);
+        const newVisit = mapVisitResponseToVisit(response.data);
+        this.visits.push(newVisit);
+        this.currentVisit = newVisit;
+        return newVisit;
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.message) ||
+          'Error al crear la visita.';
+        console.error('Error creating visit:', error);
+        return null;
+      } finally {
         this.loading = false;
-      } catch (error: unknown) {
-        this.loading = false;
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error loading visits.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
       }
     },
 
-    /**
-     * Loads details of a specific visit, including measurements.
-     * @param visitLocalId The local ID of the visit.
-     */
-    async loadVisitDetails(visitLocalId: number) {
+    async getVisitByUuid(visitUuid: string): Promise<Visit | null> {
+      if (!visitUuid) {
+        this.error = 'Visit UUID is required.';
+        return null;
+      }
       this.loading = true;
       this.error = null;
       try {
-        const response = await api.get<VisitWithMeasurement>(`/visits/${visitLocalId}/details`);
-        this.selectedVisit = response.data;
+        const response = await api.get<VisitResponseBackend>(`/visits/${visitUuid}`);
+        const fetchedVisit = mapVisitResponseToVisit(response.data);
+        this.currentVisit = fetchedVisit;
+        return fetchedVisit;
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.message) ||
+          'Error al obtener la visita.';
+        console.error('Error fetching visit by UUID:', error);
+        return null;
+      } finally {
         this.loading = false;
-      } catch (error: unknown) {
-        this.loading = false;
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error loading visit details.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
       }
     },
 
-    /**
-     * Adds a new visit.
-     * @param patientLocalId The local ID of the patient.
-     * @param practitionerLocalId The local ID of the practitioner.
-     * @param visitDate The visit date (ISO 8601).
-     */
-    async addVisit(patientLocalId: number, practitionerLocalId: number, visitDate: string) {
+    async getVisitsByPatientNationalId(patientNationalId: string): Promise<Visit[] | null> {
+      if (!patientNationalId || patientNationalId === 'N/A') {
+        this.error = 'Patient National ID is required and must be valid.';
+        console.error('Error: Patient National ID is undefined or invalid:', patientNationalId);
+        return null;
+      }
       this.loading = true;
       this.error = null;
       try {
-        const visitData = {
-          patientId: patientLocalId,
-          practitionerId: practitionerLocalId,
-          visitDate,
-        };
-        const response = await api.post<Visit>('/visits', visitData);
-        this.visits.push(response.data);
+        const response = await api.get<VisitResponseBackend[]>(`/visits/patient/${patientNationalId}`);
+        this.visits = response.data.map(mapVisitResponseToVisit);
+        return this.visits;
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.message) ||
+          'Error al obtener las visitas del paciente.';
+        console.error('Error fetching visits by patient national ID:', error);
+        return null;
+      } finally {
         this.loading = false;
-        return response.data;
-      } catch (error: unknown) {
-        this.loading = false;
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error adding visit.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
       }
-    },
-  },
-
-  getters: {
-    sortedVisits: (state) => {
-      return [...state.visits].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
     },
   },
 });

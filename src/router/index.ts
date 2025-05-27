@@ -9,6 +9,7 @@ import DashboardView from '@/pages/DashboardView.vue'
 import { useAuthStore } from '@/stores/authStore'
 import PatientsView from '@/pages/PatientsView.vue'
 import AppoinmentView from '@/pages/AppoinmentView.vue'
+import BloodPressureChartView from '@/pages/BloodPressureChartView.vue'
 import ConfigView from '@/pages/AdminUsers.vue'
 import FhirProfilePractitionerView from '@/pages/ProfilePractitionerView.vue'
 
@@ -59,6 +60,12 @@ const routes = [
         path: 'practitioner',
         name: 'practitioner',
         component: FhirProfilePractitionerView,
+        meta: { requiresAuth: true, roles: ['ROLE_PRACTITIONER'] },
+      },
+      {
+        path: 'bloodPressureChart',
+        name: 'bloodPressureChart',
+        component: BloodPressureChartView,
         meta: { requiresAuth: true, roles: ['ROLE_PRACTITIONER'] },
       },
       {
