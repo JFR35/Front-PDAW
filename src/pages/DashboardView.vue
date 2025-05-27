@@ -16,33 +16,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="app-header">
-  <router-link to="/dashboard" class="logo">MedApp</router-link>
 
-  <div class="quick-access">
-    <button @click="$router.push('/emergencias')" class="btn-emergency">
-      <i class="bi bi-asterisk"></i> Urgencias
-    </button>
-    <button class="btn-notifications">
-      <i class="bi bi-bell"></i>
-    </button>
-  </div>
-</header>
   <div class="dashboard-container">
     <!-- Header with action area -->
     <header class="dashboard-header">
       <div>
         <h1 class="dashboard-title">Dashboard</h1>
         <p class="dashboard-subtitle">Bienvenido al panel de control</p>
-      </div>
-      <div>
-        <button
-          class="btn btn-profile"
-          aria-label="Perfil de usuario"
-          @click="$router.push('/dashboard/perfil')"
-        >
-          <i class="bi bi-person-circle"></i> Perfil
-        </button>
       </div>
     </header>
 
@@ -60,12 +40,24 @@ onMounted(() => {
               <h3 class="card-title">Mi Perfil</h3>
             </div>
             <p class="card-text">Completa tu información de facultativo</p>
-            <router-link
-              to="/dashboard/practitioner"
-              class="btn btn-card"
-              aria-label="Ver perfil de facultativo"
-            >
+            <router-link to="/dashboard/practitioner" class="btn btn-card" aria-label="Ver perfil de facultativo">
               Ver Perfil <i class="bi bi-arrow-right"></i>
+            </router-link>
+          </div>
+        </article>
+        <article class="card card-patients">
+
+          <div class="card-body">
+            <div class="card-header">
+              <div class="icon-circle">
+                <i class="bi bi-heart-pulse"></i>
+              </div>
+              <h3 class="card-title">Monitorización de Presión Sanguínea</h3>
+            </div>
+            <p class="card-text">Visualiza y analiza la presión sanguínea de tus pacientes</p>
+            <router-link to="/dashboard/bloodPressureChart" class="btn btn-card"
+              aria-label="Ver gráficos de presión sanguínea">
+              Ver Gráficos <i class="bi bi-arrow-right"></i>
             </router-link>
           </div>
         </article>
@@ -87,11 +79,7 @@ onMounted(() => {
                 <span class="placeholder col-6"></span>
               </template>
             </p>
-            <router-link
-              to="/dashboard/citas"
-              class="btn btn-card"
-              aria-label="Ver citas programadas"
-            >
+            <router-link to="/dashboard/citas" class="btn btn-card" aria-label="Ver citas programadas">
               Ver Citas <i class="bi bi-arrow-right"></i>
             </router-link>
           </div>
@@ -107,11 +95,7 @@ onMounted(() => {
               <h3 class="card-title">Pacientes</h3>
             </div>
             <p class="card-text">Gestiona tus observaciones</p>
-            <router-link
-              to="/dashboard/pacientes"
-              class="btn btn-card"
-              aria-label="Ver lista de pacientes"
-            >
+            <router-link to="/dashboard/pacientes" class="btn btn-card" aria-label="Ver lista de pacientes">
               Ver Pacientes <i class="bi bi-arrow-right"></i>
             </router-link>
           </div>
@@ -132,11 +116,8 @@ onMounted(() => {
               <h3 class="card-title">Facultativos</h3>
             </div>
             <p class="card-text">Realiza acciones de administración sobre el personal facultativo</p>
-            <router-link
-              to="/dashboard/configuracion"
-              class="btn btn-card"
-              aria-label="Ir a configuración de facultativos"
-            >
+            <router-link to="/dashboard/configuracion" class="btn btn-card"
+              aria-label="Ir a configuración de facultativos">
               Ir a Administración <i class="bi bi-arrow-right"></i>
             </router-link>
           </div>
@@ -152,11 +133,7 @@ onMounted(() => {
               <h3 class="card-title">Estadísticas</h3>
             </div>
             <p class="card-text">Visualiza métricas y estadísticas del sistema</p>
-            <router-link
-              to="/dashboard/estadisticas"
-              class="btn btn-card"
-              aria-label="Ver estadísticas"
-            >
+            <router-link to="/dashboard/estadisticas" class="btn btn-card" aria-label="Ver estadísticas">
               Ver Estadísticas <i class="bi bi-arrow-right"></i>
             </router-link>
           </div>
@@ -170,7 +147,9 @@ onMounted(() => {
 <style scoped>
 /* Base styles */
 .dashboard-container {
-  padding: 1.5rem;
+  padding: 4.5rem;
+  border-radius: 12px;
+  background-color: #f8f8f8;
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -386,9 +365,17 @@ onMounted(() => {
 }
 
 @keyframes pulse {
-  0% { opacity: 0.5; }
-  50% { opacity: 0.8; }
-  100% { opacity: 0.5; }
+  0% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0.5;
+  }
 }
 
 /* Responsive adjustments */
