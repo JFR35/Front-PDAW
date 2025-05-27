@@ -1,29 +1,21 @@
-// src/types/PatientTyped.ts (o FhirPatient.ts)
-
 /**
- * Define la estructura estándar de un identificador en FHIR.
- * Puedes mover esto a un archivo FhirCommon.ts si lo usas en varios lugares.
+ * Define el identificador estándar de FHIR.
  */
 export interface Identifier {
-  system: string;
-  value: string;
-  use?: 'usual' | 'official' | 'temp' | 'secondary' | 'old';
+  system: string
+  value: string
+  use?: 'usual' | 'official' | 'temp' | 'secondary' | 'old' // Es ocpional, se deja para una futura ampliación del StructureDefinition
 }
 
 /**
- * Define la estructura estándar de un nombre humano en FHIR.
- * Puedes mover esto a un archivo FhirCommon.ts si lo usas en varios lugares.
+ * Define el nombre humano en el formato estándar de FHIR.
  */
 export interface HumanName {
-  use?: 'usual' | 'official' | 'temp' | 'nickname' | 'anonymous' | 'old' | 'maiden';
-  family: string; // Obligatorio si en tu SD lo es
-  given: string[];
-  prefix?: string[];
-  suffix?: string[];
+  use?: 'usual' | 'official' | 'temp' | 'nickname' | 'anonymous' | 'old' | 'maiden' // Es opcional, se deja para una futura ampliación del StructureDefinition
+  family: string
+  given: string[]
+  // Añadir más campos en caso de que nuestro StructureDefinition los requiera
 }
-
-// Puedes añadir ContactPoint, Address, CodeableConcept, Coding aquí o en un archivo común
-// si los usarás para Patient también.
 
 /**
  * Representa un recurso de FHIR Patient.
@@ -31,43 +23,40 @@ export interface HumanName {
  * acorde al StructureDefinition.
  */
 export interface FhirPatient {
-  resourceType: 'Patient';
-  id?: string;
-  meta?: { // Añadido para consistencia y uso de perfiles
-    profile?: string[];
-  };
-  identifier: Identifier[]; // Obligatorio según tu StructureDefinition (min: 1)
-  name: HumanName[]; // Obligatorio según tu JSON de ejemplo
-  gender: 'male' | 'female' | 'other' | 'unknown'; // Obligatorio según tu JSON de ejemplo
-  birthDate: string; // Obligatorio según tu JSON de ejemplo
-  // Eliminar 'text' a menos que tengas un caso de uso específico para generarlo en el frontend
-  // telecom?: ContactPoint[]; // Añadir si tu perfil Patient lo usa
-  // address?: Address[];     // Añadir si tu perfil Patient lo usa
-  // Otros campos FHIR Patient relevantes de tu StructureDefinition...
+  resourceType: 'Patient'
+  id?: string
+  meta?: {
+    // Añadido para consistencia y uso de perfiles
+    profile?: string[]
+  }
+  identifier: Identifier[]
+  name: HumanName[]
+  gender: 'male' | 'female' | 'other' | 'unknown'
+  birthDate: string
 }
 
 /**
- * Entidad de persistencia del paciente en la BBDD
- * Define la estructura para almacenar un recurso FHIR
- *
+ * Entidad para representar un paciente en el PatientMasterIndex de nuestro EMPI
  * Incluye su representación JSON y su versión interpretada.
  */
 export interface FhirPatientEntity {
-  id: string; // El ID de la BBDD local (UUID u otro)
-  nationalId: string; // El identificador que usas en tu EMPI para el paciente (ej. DNI/NIE)
-  fhirId?: string; // El ID que Aidbox (u otro FHIR server) asigna al recurso Patient
-  name?: string; // Campo opcional si tu PMI almacena el nombre concatenado del paciente
-  resourcePatientJson: string; // La representación JSON completa del recurso FHIR Patient
-  parsedPatient?: FhirPatient; // La representación de objeto TypeScript del recurso FHIR Patient
-  // Otros campos de tu PatientMasterIndex si los hay (ej. assignedPractitionerId)
+  id: string // Es el ID lógico del paciente en nuestra bbdd local, no el FHIR ID, no confundir
+  nationalId: string // El identificador nacional, único y obligatoria, sería aconsejable también el numero de la seguridad social
+  fhirId?: string // ID lógico que el servidor FHIR asigna a cada paciente.
+  name?: string // Campo opcional para más adelante añadir busqueda por nombre lo que puede ser util para búsquedas rápidas
+  fhirPatient: string // La representación JSON completa del recurso FHIR Patient
+  parsedPatient?: FhirPatient // La representación de objeto TypeScript del recurso FHIR Patient
+  ehrId?: string // El ID para la composición del paciente en el EHR
+  assignedPractitioner?: string | null // De momento no se aplica relación al médico asignado al crear paciente
+  createdAt?: string
+  updatedAt?: string
 }
 
-// Para crear un nuevo paciente en el formulario
+// Objeto vacío para inicializar un paciente
 export const emptyPatient: FhirPatient = {
   resourceType: 'Patient',
-  identifier: [{ system: '', value: '' }], // Inicializar system y value vacíos
-  name: [{ given: [''], family: '' }], // Inicializar family vacía
-  gender: 'unknown', // O el valor por defecto que prefieras
+  identifier: [{ system: '', value: '' }],
+  name: [{ given: [''], family: '' }],
+  gender: 'unknown',
   birthDate: '',
-};
-
+}

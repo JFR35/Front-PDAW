@@ -1,28 +1,40 @@
-// src/stores/patientStore.ts
-import { defineStore } from 'pinia';
-import api from '@/services/apiService';
-import type { FhirPatientEntity, FhirPatient } from '@/types/PatientTyped'; // Asegúrate que la ruta sea correcta
-import { AxiosError } from 'axios';
+import { defineStore } from 'pinia'
+import api from '@/services/apiService'
+import type { FhirPatient, FhirPatientEntity } from '@/types/PatientTyped' // Importa FhirPatientEntity
+import { AxiosError } from 'axios'
 
+// Define el estado del store de pacientes
 interface PatientState {
-  patients: FhirPatient[]; // Almacenaremos FhirPatient directamente para la UI
-  loading: boolean;
-  error: string | null;
+  patients: FhirPatient[]
+  loading: boolean
+  error: string | null
 }
 
+// Función para validar datos de un paciente, lo mejor sería refactorizar y sacarla a un archivo de utilidades
 function validatePatient(patient: FhirPatient): boolean {
-  // Validaciones basadas en tu StructureDefinition y JSON de ejemplo
-  if (!patient.identifier || patient.identifier.length === 0 || !patient.identifier[0].value || !patient.identifier[0].system) return false;
-  if (!patient.name || patient.name.length === 0 || !patient.name[0].family || !patient.name[0].given || patient.name[0].given.length === 0) return false;
-  if (!patient.gender) return false;
-  if (!patient.birthDate) return false;
+  // Validaciones basadas en el StructureDefinition y JSON de ejemplo
+  if (
+    !patient.identifier ||
+    patient.identifier.length === 0 ||
+    !patient.identifier[0].value ||
+    !patient.identifier[0].system
+  )
+    return false
+  if (
+    !patient.name ||
+    patient.name.length === 0 ||
+    !patient.name[0].family ||
+    !patient.name[0].given ||
+    patient.name[0].given.length === 0
+  )
+    return false
+  if (!patient.gender) return false
+  if (!patient.birthDate) return false
 
-  // Añade aquí cualquier otra validación requerida por tu StructureDefinition o lógica de negocio
-  // Por ejemplo, si telecom o address fueran obligatorios en Patient, los añadirías aquí.
-
-  return true;
+  return true
 }
 
+// Store de Pinia para manejar a los pacientes
 export const usePatientStore = defineStore('patientStore', {
   state: (): PatientState => ({
     patients: [],
@@ -30,155 +42,186 @@ export const usePatientStore = defineStore('patientStore', {
     error: null,
   }),
 
+  // Acciones del store para manejar pacientes
   actions: {
-    /**
-     * Carga todos los pacientes del backend.
-     * Asume que el backend GET /api/patients devuelve List<PatientMasterIndex>.
-     * Necesitamos mapear eso a FhirPatient.
-     */
     async loadPatients() {
-      this.loading = true;
-      this.error = null;
+      this.loading = true
+      this.error = null
       try {
-        const response = await api.get<FhirPatientEntity[]>('/patients'); // Asume que la URL es /api/patients
-        // Mapear PatientMasterIndex a FhirPatient para el estado del store
-        this.patients = response.data
-          .filter(pmi => pmi.parsedPatient) // Asegúrate de que parsedPatient exista
-          .map(pmi => pmi.parsedPatient as FhirPatient); // Castear a FhirPatient
-        this.loading = false;
+        // Obtenemos la lista de PatientMasterIndex (FhirPatientEntity sin fhirPatient)
+        const response = await api.get<Omit<FhirPatientEntity, 'fhirPatient'>[]>('/patients')
+
+        const fetchedPatients: FhirPatient[] = [] // Array que almacenará los pacientes completos
+        // Validamos que la respuesta contenga datos
+        if (!response.data || response.data.length === 0) {
+          this.loading = false
+          this.error = 'No se encontraron pacientes.'
+          console.warn('No se encontraron pacientes en la respuesta del backend.')
+          return
+        }
+        // Para cada entidad recibida, hacemos una llamada individual para obtener el FhirPatient completo
+        for (const entity of response.data) {
+          if (entity.nationalId) {
+            try {
+              // Llamamos a getPatientByNationalId para obtener el FhirPatient completo
+              // Este getPatientByNationalId devuelve el FhirPatient con su JSON anidado
+              const fhirPatient = await this.getPatientByNationalId(entity.nationalId)
+              if (fhirPatient) {
+                fetchedPatients.push(fhirPatient)
+              } else {
+                console.warn(
+                  `No se pudo obtener el recurso (FhirPatient) para el paciente con DNI: : ${entity.nationalId}`,
+                )
+              }
+            } catch (innerError) {
+              console.error(
+                `Error al obtener el recurso (FhirPatient) para el paciente con DNI ${entity.nationalId}:`,
+                innerError,
+              )
+            }
+          }
+        }
+        this.patients = fetchedPatients
+        this.loading = false
       } catch (error: any) {
-        this.loading = false;
-        this.error = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al cargar los pacientes.';
+        this.loading = false
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.error) ||
+          'Error al cargar los pacientes.'
+        console.error('Error loading patients from backend:', error)
       }
     },
-
-    /**
-     * Crea un nuevo paciente en el backend.
-     * Backend: POST /api/patients?nationalId={nationalId} con FHIR JSON en el body.
-     */
-     async createPatient(patientData: FhirPatient): Promise<FhirPatient | null> {
-      this.loading = true;
-      this.error = null;
+    // Método para crear un nuevo paciente
+    async createPatient(patientData: FhirPatient): Promise<FhirPatient | null> {
+      this.loading = true
+      this.error = null
       try {
-        const nationalId = patientData.identifier?.[0]?.value;
+        const nationalId = patientData.identifier?.[0]?.value
         if (!nationalId) {
-          this.error = 'El identificador nacional (nationalId) del paciente es obligatorio.';
-          throw new Error(this.error);
+          this.error = 'El identificador nacional (DNI) es obligatorio.'
+          throw new Error(this.error)
+        }
+        const patientJson = JSON.stringify(patientData)
+        interface PostPatientResponse {
+          id: string // O number
+          nationalId: string
+          fhirId: string
+          // ... otras propiedades que devuelva el backend
         }
 
-        const patientJson = JSON.stringify(patientData);
-
-        const response = await api.post<FhirPatientEntity>(`/patients?nationalId=${nationalId}`, patientJson, {
-          headers: {
-            'Content-Type': 'application/json',
+        const response = await api.post<PostPatientResponse>(
+          `/patients?nationalId=${nationalId}`,
+          patientJson,
+          {
+            headers: { 'Content-Type': 'application/json' },
           },
-        });
+        )
 
-        if (response.data && response.data.parsedPatient) {
-          this.patients.push(response.data.parsedPatient);
-          return response.data.parsedPatient;
+        // Llamada por nationalId para obtener el FhirPatient completo, el backend se encarga de buscar en Aidbox.
+        const createdFhirPatient = await this.getPatientByNationalId(nationalId)
+
+        if (createdFhirPatient) {
+          this.patients.push(createdFhirPatient)
+          this.loading = false
+          return createdFhirPatient
         } else {
-          this.error = 'El backend no devolvió un paciente válido.';
-          return null;
+          this.error =
+            'Paciente creado, pero no se pudo obtener el recurso FHIR completo para la UI.'
+          this.loading = false
+          return null
         }
-      } catch (error: unknown) {
-        this.error = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al crear el paciente.';
-        return null;
-      } finally {
-        this.loading = false;
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.error) ||
+          'Error al crear el paciente.'
+        this.loading = false
+        return null
       }
     },
 
-    /**
-     * Obtiene un paciente por su nationalId.
-     * Backend: GET /api/patients/{nationalId} devuelve PatientMasterIndex.
-     */
+    // Método para obtener un paciente por su identificador nacional (DNI)
     async getPatientByNationalId(nationalId: string): Promise<FhirPatient | null> {
-      this.loading = true;
-      this.error = null;
+      this.loading = true
+      this.error = null
       try {
-        const response = await api.get<FhirPatientEntity>(`/patients/${nationalId}`); // Asume que la URL es /api/patients/{nationalId}
-        if (response.data && response.data.parsedPatient) {
-          return response.data.parsedPatient;
-        } else {
-          console.warn(`Paciente con nationalId ${nationalId} encontrado pero sin parsedPatient.`);
-          return null;
+        const response = await api.get<FhirPatientEntity>(`/patients/${nationalId}`)
+        let fhirPatient: FhirPatient
+        try {
+          fhirPatient = JSON.parse(response.data.fhirPatient) as FhirPatient
+          if (!fhirPatient.id && response.data.fhirId) {
+            fhirPatient.id = response.data.fhirId
+          }
+        } catch (e) {
+          console.error(
+            'Error de parsing en FHIR patient JSON desde la entidad (getById):',
+            e,
+            response.data,
+          )
+          this.error = 'Error al procesar la información FHIR del paciente.'
+          this.loading = false
+          return null
         }
-      } catch (error: unknown) {
-        if (error instanceof AxiosError && error.response?.status === 404) {
-          console.warn(`Paciente con nationalId ${nationalId} no encontrado (404).`);
-          return null;
-        }
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al obtener el paciente.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
-      } finally {
-        this.loading = false;
+        this.loading = false
+        return fhirPatient
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.error) ||
+          'Error al obtener el paciente.'
+        this.loading = false
+        return null
       }
     },
 
-    /**
-     * Actualiza un paciente existente.
-     * Backend: PUT /api/patients/{nationalId} espera PatientMasterIndex en el body.
-     *
-     * NOTA IMPORTANTE: Al igual que con Practitioner, si tu backend PUT espera
-     * PatientMasterIndex y quieres actualizar el recurso FHIR completo en Aidbox,
-     * el backend PUT /api/patients/{nationalId} debería aceptar 'String fhirPatientJson'
-     * en el @RequestBody, no 'PatientMasterIndex'.
-     */
     async updatePatient(nationalId: string, patientData: FhirPatient): Promise<FhirPatient | null> {
-      this.loading = true;
-      this.error = null;
+      this.loading = true
+      this.error = null
       if (!validatePatient(patientData)) {
-        this.error = 'Los datos del paciente no cumplen los requisitos mínimos para la actualización.';
-        throw new Error(this.error);
+        this.error = 'Datos inválidos.'
+        throw new Error(this.error)
       }
       try {
-        const patientJson = JSON.stringify(patientData); // Envía el FHIR JSON completo
+        const patientJsonString = JSON.stringify(patientData)
+        await api.put<any>(`/patients/${nationalId}`, patientJsonString, {
+          headers: { 'Content-Type': 'application/json' },
+        })
 
-        const response = await api.put<FhirPatientEntity>(`/patients/${nationalId}`, patientJson, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        // Actualizar el estado del store
-        const index = this.patients.findIndex(p => p.identifier?.[0]?.value === nationalId);
-        if (index !== -1 && response.data.parsedPatient) {
-          this.patients[index] = response.data.parsedPatient;
+        const index = this.patients.findIndex((p) => p.identifier?.[0]?.value === nationalId)
+        if (index !== -1) {
+          this.patients[index] = patientData
         }
-        this.loading = false;
-        return response.data.parsedPatient || null;
-      } catch (error: unknown) {
-        this.loading = false;
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al actualizar el paciente.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
-      } finally {
-        this.loading = false;
+        this.loading = false
+        return patientData
+      } catch (error: any) {
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.error) ||
+          'Error al actualizar el paciente.'
+        this.loading = false
+        return null
       }
     },
 
-    /**
-     * Elimina un paciente por su nationalId.
-     * Backend: DELETE /api/patients/{nationalId}
-     */
     async deletePatient(nationalId: string): Promise<void> {
-      this.loading = true;
-      this.error = null;
+      this.loading = true
+      this.error = null
       try {
-        await api.delete(`/patients/${nationalId}`);
-        this.patients = this.patients.filter(p => p.identifier?.[0]?.value !== nationalId);
-        this.loading = false;
+        const response = await api.delete(`/patients/${nationalId}`)
+        console.log('Respuesta del delete:', response) // Para depuración
+
+        if (response.status >= 200 && response.status < 300) {
+          this.patients = this.patients.filter((p) => p.identifier?.[0]?.value !== nationalId)
+        } else {
+          throw new Error(`Error del servidor: ${response.status}`)
+        }
       } catch (error: unknown) {
-        this.loading = false;
-        const errorMessage = (error instanceof AxiosError && error.response?.data?.message) || (error instanceof Error && error.message) || 'Error al eliminar el paciente.';
-        this.error = errorMessage;
-        throw new Error(errorMessage);
+        console.error('Error en deletePatient:', error)
+        this.error =
+          (error instanceof AxiosError && error.response?.data?.message) ||
+          (error instanceof Error && error.message) ||
+          'Error al eliminar el paciente.'
+        throw error // Re-lanzar el error para que el componente lo capture
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
   },
-
-});
+})

@@ -1,33 +1,28 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
-import { useAuthStore } from '@/stores/authStore';
+//import { useAuthStore } from '@/stores/authStore';
 import { usePatientStore } from '@/stores/patientStore';
 import type { FhirPatient } from '@/types/PatientTyped';
 import { emptyPatient } from '@/types/PatientTyped';
-//import { AxiosError } from 'axios'; // Importar AxiosError para tipado específico, aunque el catch general use 'any'
+//import { AxiosError } from 'axios';
 
 const patientStore = usePatientStore();
-const authStore = useAuthStore(); // Asegúrate de que authStore está importado si lo usas
+//const authStore = useAuthStore(); // De momento la autenticación esta sin protección.
 const activeTab = ref('list');
 const selectedPatient = ref<FhirPatient>(structuredClone(emptyPatient));
 const isSubmitting = ref(false);
-const formError = ref(''); // Esta variable ya existe y se usa para errores del formulario/store
+const formError = ref('');
 
-// Cargar pacientes al montar el componente
+// Cargar pacientes onMounted al montar el componente
 onMounted(async () => {
-  // Cargar pacientes al inicio
-  await patientStore.loadPatients(); // ¡Importante para poblar la tabla!
-
-  // --- ELIMINADO EL BLOQUE QUE CAUSABA EL ERROR ---
-  // La lógica de verificación de perfil de practicante no va aquí.
-  // Si necesitas controlar el acceso a esta página, usa Vue Router Guards.
+  await patientStore.loadPatients();
 });
 
 // Funciones de navegación
 const showList = () => {
   activeTab.value = 'list';
-  formError.value = ''; // Limpiar errores al cambiar de vista
-  patientStore.error = null; // Limpiar errores del store
+  formError.value = '';
+  patientStore.error = null;
 };
 
 const showCreateForm = () => {
@@ -51,7 +46,6 @@ const showDetails = (patient: FhirPatient) => {
   patientStore.error = null;
 };
 
-// Guardar paciente
 const savePatient = async () => {
   // Una validación rápida antes de enviar (el store hará una más completa)
   if (!selectedPatient.value.identifier?.[0]?.value ||
@@ -97,7 +91,6 @@ const deletePatient = async (patientToDelete: FhirPatient) => {
     return;
   }
 
-  // Opcional: Confirmación de eliminación con un modal o confirm()
   if (!confirm(`¿Está seguro de que desea eliminar al paciente con DNI: ${patientNationalId}?`)) {
     return;
   }
@@ -107,22 +100,25 @@ const deletePatient = async (patientToDelete: FhirPatient) => {
 
   try {
     await patientStore.deletePatient(patientNationalId);
-    showList(); // Volver a la lista
-    // No es estrictamente necesario cargar de nuevo si el filtro en el store es reactivo,
-    // pero asegura la coherencia si hay múltiples usuarios o cambios externos.
-    // patientStore.loadPatients(); // El store ya lo debería haber eliminado de su array
+    // Forzar recarga de pacientes después de eliminar
+    await patientStore.loadPatients();
+    showList();
   } catch (error: any) {
-    formError.value =
-      (error.response?.data?.message) ||
-      (error.message) ||
-      'Error al eliminar el paciente. Por favor intente nuevamente.';
-    console.error('Error deleting patient:', error);
+    console.error('Error completo al eliminar:', error);
+    formError.value = `Error al eliminar: ${
+      error.response?.data?.message ||
+      error.message ||
+      'Error desconocido'
+    }`;
+    if (error.response) {
+      console.error('Respuesta del servidor:', error.response.data);
+    }
   } finally {
     isSubmitting.value = false;
   }
 };
 
-// Calcula la edad a partir de la fecha de nacimiento
+// Función para calcular la edad a partir de la fecha de nacimiento
 const calculateAge = (birthDate: string): number => {
   if (!birthDate) return 0;
   const today = new Date();
@@ -135,7 +131,6 @@ const calculateAge = (birthDate: string): number => {
   return age;
 };
 
-// Nombre completo computado para la vista de detalles
 const fullName = computed(() => {
   if (selectedPatient.value?.name?.[0]) {
     return `${selectedPatient.value.name[0].given.join(' ')} ${selectedPatient.value.name[0].family || ''}`;
@@ -143,7 +138,6 @@ const fullName = computed(() => {
   return '';
 });
 
-// Edad actual computada para el formulario y detalles
 const currentAge = computed(() => {
   return selectedPatient.value?.birthDate ? calculateAge(selectedPatient.value.birthDate) : '';
 });
@@ -196,13 +190,14 @@ const currentAge = computed(() => {
           <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <h4 class="mb-0 fw-semibold">
               <i class="bi bi-list-ul me-2 text-primary"></i>
-              Lista de Pacientes
+              Listado de Pacientes activos
             </h4>
             <span class="badge bg-primary rounded-pill">
               {{ patientStore.patients.length }}
             </span>
           </div>
 
+          <!-- Animación si tarda en cargar pacientes-->
           <div class="card-body p-0">
             <div v-if="patientStore.loading" class="d-flex justify-content-center align-items-center py-5">
               <div class="text-center">
@@ -213,6 +208,7 @@ const currentAge = computed(() => {
               </div>
             </div>
 
+            <!-- Mensaje si el listado está vacío y reiterar la acción de crear uno-->
             <div v-else-if="patientStore.patients.length === 0"
               class="d-flex flex-column justify-content-center align-items-center py-5 text-center">
               <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
@@ -226,8 +222,8 @@ const currentAge = computed(() => {
               <table class="table table-hover align-middle mb-0">
                 <thead class="table-light sticky-top">
                   <tr>
-                    <th class="ps-4">ID</th>
-                    <th>Nombre</th>
+                    <th class="ps-4">Documento Nacional de Identidad</th>
+                    <th>Nombre Completo</th>
                     <th>Género</th>
                     <th>Fecha Nacimiento</th>
                     <th class="text-end pe-4">Acciones</th>
@@ -323,7 +319,7 @@ const currentAge = computed(() => {
                   </div>
 
                   <div class="col-md-6">
-                    <label for="givenName" class="form-label">Nombre(s)</label>
+                    <label for="givenName" class="form-label">Nombre</label>
                     <div class="input-group">
                       <span class="input-group-text bg-light">
                         <i class="bi bi-person-fill text-muted"></i>
@@ -475,6 +471,8 @@ const currentAge = computed(() => {
     </div>
   </div>
 </template>
+
+<!-- Estilos mínimos para mejorar la apariencia con bootstrap-->
 <style scoped>
 .patient-container {
   background-color: #f8f9fa;
