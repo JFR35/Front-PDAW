@@ -18,7 +18,7 @@ export const usePatientStore = defineStore('patientStore', {
   }),
 
   actions: {
-    async loadPatients() {
+  async loadPatients() {
       this.loading = true;
       this.error = null;
       try {
@@ -30,7 +30,7 @@ export const usePatientStore = defineStore('patientStore', {
               if (!parsedPatient.id && backendDto.fhirId) {
                 parsedPatient.id = backendDto.fhirId;
               }
-              // Ensure nationalId is valid
+              parsedPatient.ehrId = backendDto.ehrId; // Añadir ehrId
               if (!backendDto.nationalId || backendDto.nationalId === 'N/A') {
                 console.warn('Invalid nationalId in backend DTO:', backendDto);
                 return null;
@@ -42,7 +42,7 @@ export const usePatientStore = defineStore('patientStore', {
               return null;
             }
           })
-          .filter((patient): patient is FhirPatient => patient !== null); // Remove invalid patients
+          .filter((patient): patient is FhirPatient => patient !== null);
         if (this.patients.length === 0) {
           this.error = 'No valid patients found in the database.';
         }

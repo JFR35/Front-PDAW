@@ -1,6 +1,3 @@
-typescript
-
-Copiar
 // src/components/AppointmentView.vue
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
@@ -36,13 +33,11 @@ const filterPatientNationalId = ref<string>('');
 
 onMounted(async () => {
   try {
-    // Load patients and practitioners concurrently
     await Promise.all([
       patientStore.loadPatients(),
       practitionerStore.loadPractitioners(),
     ]);
 
-    // Check if patients are available and have valid nationalId
     if (patientStore.patients.length > 0) {
       const firstValidPatient = patientStore.patients.find(
         (p) => p.identifier?.[0]?.value && p.identifier[0].value !== 'N/A'
@@ -58,7 +53,6 @@ onMounted(async () => {
       errorMessage.value = 'No patients available to load visits.';
     }
 
-    // Set default practitioner if available
     if (practitionerStore.practitioners.length > 0) {
       newVisitForm.value.practitionerNationalId = practitionerStore.practitioners[0].identifier[0].value;
     }
@@ -93,7 +87,7 @@ const handleSubmit = async () => {
   successMessage.value = null;
 
   if (!newVisitForm.value.patientNationalId || !newVisitForm.value.practitionerNationalId || !newVisitForm.value.visitDate) {
-    errorMessage.value = 'Please complete all required visit fields (Patient, Practitioner, Visit Date).';
+    errorMessage.value = 'Por favor, complete todos los campos requeridos de la visita (Paciente, Profesional, Fecha de Visita).';
     return;
   }
 
@@ -101,7 +95,7 @@ const handleSubmit = async () => {
     const selectedPractitioner = practitionerStore.practitioners.find(
       (p) => p.identifier?.[0]?.value === newVisitForm.value.practitionerNationalId
     );
-    newVisitForm.value.bloodPressureMeasurement!.measuredBy = selectedPractitioner?.name?.[0]?.family || 'Unknown';
+    newVisitForm.value.bloodPressureMeasurement!.measuredBy = selectedPractitioner?.name?.[0]?.family || 'Desconocido';
 
     if (
       newVisitForm.value.bloodPressureMeasurement!.systolicMagnitude === null ||
@@ -109,15 +103,15 @@ const handleSubmit = async () => {
       !newVisitForm.value.bloodPressureMeasurement!.location ||
       !newVisitForm.value.bloodPressureMeasurement!.date
     ) {
-      errorMessage.value = 'Please complete all blood pressure fields if included.';
+      errorMessage.value = 'Por favor, complete todos los campos de la medición de presión arterial si está incluida.';
       return;
     }
     if (newVisitForm.value.bloodPressureMeasurement!.systolicMagnitude < 50 || newVisitForm.value.bloodPressureMeasurement!.systolicMagnitude > 300) {
-      errorMessage.value = 'Systolic value must be between 50 and 300 mm[Hg].';
+      errorMessage.value = 'El valor sistólico debe estar entre 50 y 300 mm[Hg].';
       return;
     }
     if (newVisitForm.value.bloodPressureMeasurement!.diastolicMagnitude < 30 || newVisitForm.value.bloodPressureMeasurement!.diastolicMagnitude > 200) {
-      errorMessage.value = 'Diastolic value must be between 30 and 200 mm[Hg].';
+      errorMessage.value = 'El valor diastólico debe estar entre 30 y 200 mm[Hg].';
       return;
     }
   } else {
@@ -147,11 +141,11 @@ const handleSubmit = async () => {
         await visitStore.getVisitsByPatientNationalId(filterPatientNationalId.value);
       }
     } else {
-      errorMessage.value = visitStore.error || 'Failed to save visit.';
+      errorMessage.value = visitStore.error || 'No se pudo guardar la visita.';
     }
   } catch (error: any) {
-    console.error('Error during visit submission:', error);
-    errorMessage.value = error.message || 'An unexpected error occurred.';
+    console.error('Error durante el envío de la visita:', error);
+    errorMessage.value = error.message || 'Ocurrió un error inesperado.';
   }
 };
 
@@ -160,7 +154,7 @@ const filterVisitsByPatient = async () => {
     await visitStore.getVisitsByPatientNationalId(filterPatientNationalId.value);
   } else {
     visitStore.visits = [];
-    errorMessage.value = 'Please select a patient to view visits.';
+    errorMessage.value = 'Por favor, seleccione un paciente para ver las visitas.';
   }
 };
 
@@ -173,37 +167,37 @@ const formatDateTime = (dateTimeString: string) => {
 
 <template>
   <div class="container py-4">
-    <h2>Visit Calendar</h2>
+    <h2>Calendario de Visitas</h2>
     <nav aria-label="breadcrumb" class="mb-4">
       <ol class="breadcrumb">
         <li class="breadcrumb-item">
           <router-link to="/dashboard">Dashboard</router-link>
         </li>
-        <li class="breadcrumb-item active">Visits</li>
+        <li class="breadcrumb-item active">Visitas</li>
       </ol>
     </nav>
 
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div class="form-group">
-        <label for="filterPatient">Filter by Patient DNI/NIE:</label>
+        <label for="filterPatient">Filtrar por DNI/NIE del Paciente:</label>
         <select class="form-select" id="filterPatient" v-model="filterPatientNationalId" @change="filterVisitsByPatient">
-          <option value="">-- Select Patient --</option>
+          <option value="">-- Seleccionar Paciente --</option>
           <option v-for="patient in patientStore.patients" :key="patient.id" :value="patient.identifier?.[0]?.value">
             {{ patient.identifier?.[0]?.value }} - {{ patient.name?.[0]?.given?.[0] }} {{ patient.name?.[0]?.family }}
           </option>
         </select>
-        <small v-if="patientStore.patients.length === 0" class="text-danger">No patients available.</small>
+        <small v-if="patientStore.patients.length === 0" class="text-danger">No hay pacientes disponibles.</small>
       </div>
       <button @click="openAddVisitModal" class="btn btn-primary">
-        Add New Visit
+        Añadir Nueva Visita
       </button>
     </div>
 
     <div v-if="visitStore.loading" class="text-center p-5">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+        <span class="visually-hidden">Cargando...</span>
       </div>
-      <p class="text-muted mt-2">Loading visits...</p>
+      <p class="text-muted mt-2">Cargando visitas...</p>
     </div>
 
     <div v-else-if="visitStore.error" class="alert alert-danger">
@@ -212,37 +206,45 @@ const formatDateTime = (dateTimeString: string) => {
 
     <div v-else>
       <div v-if="visitStore.visits.length === 0 && filterPatientNationalId" class="text-center p-5">
-        <h5 class="text-muted">No visits registered for patient {{ filterPatientNationalId }}.</h5>
+        <h5 class="text-muted">No hay visitas registradas para el paciente {{ filterPatientNationalId }}.</h5>
         <button @click="openAddVisitModal" class="btn btn-primary mt-3">
-          Schedule First Visit
+          Programar Primera Visita
         </button>
       </div>
       <div v-else-if="visitStore.visits.length === 0 && !filterPatientNationalId" class="text-center p-5">
-        <h5 class="text-muted">Please select a patient to view visits.</h5>
+        <h5 class="text-muted">Por favor, seleccione un paciente para ver las visitas.</h5>
       </div>
 
       <div v-else class="list-group">
         <div v-for="visit in visitStore.visits" :key="visit.uuid" class="list-group-item mb-3 shadow-sm rounded">
           <div class="d-flex w-100 justify-content-between align-items-center">
-            <h5 class="mb-1">Visit (UUID: {{ visit.uuid.substring(0, 8) }}...) - {{ formatDateTime(visit.date.toISOString()) }}</h5>
+            <h5 class="mb-1">Visita (UUID: {{ visit.uuid.substring(0, 8) }}...) - {{ formatDateTime(visit.date.toISOString()) }}</h5>
             <div>
               <span class="badge bg-info text-dark me-2">
                 Dr. {{ visit.practitionerName }}
               </span>
               <span v-if="visit.bloodPressureCompositionId" class="badge bg-success">
-                EHRbase Data
+                Datos EHRbase
               </span>
               <span v-else class="badge bg-warning text-dark">
-                No BP Measurement
+                Sin Medición de PA
               </span>
             </div>
           </div>
-          <p class="mb-1">Patient DNI/NIE: <strong>{{ visit.patientNationalId }}</strong></p>
-          <small class="text-muted">Practitioner DNI/NIE: {{ visit.practitionerNationalId }}</small><br>
-          <small v-if="visit.bloodPressureCompositionId" class="text-muted">Composition ID: {{ visit.bloodPressureCompositionId.substring(0, 8) }}...</small>
+          <p class="mb-1">DNI/NIE del Paciente: <strong>{{ visit.patientNationalId }}</strong></p>
+          <small class="text-muted">DNI/NIE del Profesional: {{ visit.practitionerNationalId }}</small><br>
+          <small v-if="visit.bloodPressureCompositionId" class="text-muted">ID de Composición: {{ visit.bloodPressureCompositionId.substring(0, 8) }}...</small>
 
-          <div v-if="visit.bloodPressureCompositionId" class="alert alert-info mt-3 py-2">
-            This visit includes a blood pressure measurement. Details stored in EHRbase (Composition ID: {{ visit.bloodPressureCompositionId.substring(0, 8) }}...).
+          <div v-if="visit.bloodPressureMeasurement" class="alert alert-info mt-3 py-2">
+            <strong>Medición de Presión Arterial:</strong><br>
+            Sistólica: {{ visit.bloodPressureMeasurement.systolicMagnitude }} {{ visit.bloodPressureMeasurement.systolicUnit }}<br>
+            Diastólica: {{ visit.bloodPressureMeasurement.diastolicMagnitude }} {{ visit.bloodPressureMeasurement.diastolicUnit }}<br>
+            Ubicación: {{ visit.bloodPressureMeasurement.location }}<br>
+            Medido por: {{ visit.bloodPressureMeasurement.measuredBy }}<br>
+            Fecha: {{ formatDateTime(visit.bloodPressureMeasurement.date) }}
+          </div>
+          <div v-else-if="visit.bloodPressureCompositionId" class="alert alert-warning mt-3 py-2">
+            Esta visita tiene una medición de presión arterial (ID: {{ visit.bloodPressureCompositionId.substring(0, 8) }}...), pero los datos no están disponibles. Verifique el ehrId o la composición.
           </div>
         </div>
       </div>
@@ -252,7 +254,7 @@ const formatDateTime = (dateTimeString: string) => {
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Add New Visit and Measurement</h5>
+            <h5 class="modal-title">Añadir Nueva Visita y Medición</h5>
             <button type="button" class="btn-close" @click="showAddVisitModal = false"></button>
           </div>
           <div class="modal-body">
@@ -264,59 +266,59 @@ const formatDateTime = (dateTimeString: string) => {
             </div>
             <form @submit.prevent="handleSubmit">
               <div class="mb-3">
-                <label for="patientNationalId" class="form-label">Patient DNI/NIE</label>
+                <label for="patientNationalId" class="form-label">DNI/NIE del Paciente</label>
                 <select class="form-select" id="patientNationalId" v-model="newVisitForm.patientNationalId" required>
-                  <option value="">-- Select Patient --</option>
+                  <option value="">-- Seleccionar Paciente --</option>
                   <option v-for="patient in patientStore.patients" :key="patient.id" :value="patient.identifier?.[0]?.value">
                     {{ patient.identifier?.[0]?.value }} - {{ patient.name?.[0]?.given?.[0] }} {{ patient.name?.[0]?.family }}
                   </option>
                 </select>
-                <small v-if="patientStore.patients.length === 0" class="text-danger">No patients available. Please add a patient.</small>
+                <small v-if="patientStore.patients.length === 0" class="text-danger">No hay pacientes disponibles. Por favor, añada un paciente.</small>
               </div>
               <div class="mb-3">
-                <label for="practitionerNationalId" class="form-label">Practitioner DNI/NIE</label>
+                <label for="practitionerNationalId" class="form-label">DNI/NIE del Profesional</label>
                 <select class="form-select" id="practitionerNationalId" v-model="newVisitForm.practitionerNationalId" required>
-                  <option value="">-- Select Practitioner --</option>
+                  <option value="">-- Seleccionar Profesional --</option>
                   <option v-for="practitioner in practitionerStore.practitioners" :key="practitioner.id" :value="practitioner.identifier?.[0]?.value">
                     {{ practitioner.name?.[0]?.given?.[0] }} {{ practitioner.name?.[0]?.family }} - {{ practitioner.identifier?.[0]?.value }}
                   </option>
                 </select>
-                <small v-if="practitionerStore.practitioners.length === 0" class="text-danger">No practitioners available. Please add a practitioner.</small>
+                <small v-if="practitionerStore.practitioners.length === 0" class="text-danger">No hay profesionales disponibles. Por favor, añada un profesional.</small>
               </div>
               <div class="mb-3">
-                <label for="visitDate" class="form-label">Visit Date and Time</label>
+                <label for="visitDate" class="form-label">Fecha y Hora de la Visita</label>
                 <input type="datetime-local" class="form-control" id="visitDate" v-model="newVisitForm.visitDate" required>
               </div>
               <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="includeBloodPressure" v-model="includeBloodPressure">
-                <label class="form-check-label" for="includeBloodPressure">Include Blood Pressure Measurement</label>
+                <label class="form-check-label" for="includeBloodPressure">Incluir Medición de Presión Arterial</label>
               </div>
               <div v-if="includeBloodPressure">
                 <hr>
-                <h6>Blood Pressure Details</h6>
+                <h6>Detalles de la Medición de Presión Arterial</h6>
                 <div class="mb-3">
-                  <label for="bpSystolic" class="form-label">Systolic (mm[Hg])</label>
+                  <label for="bpSystolic" class="form-label">Sistólica (mm[Hg])</label>
                   <input type="number" class="form-control" id="bpSystolic" v-model.number="newVisitForm.bloodPressureMeasurement!.systolicMagnitude" required>
                 </div>
                 <div class="mb-3">
-                  <label for="bpDiastolic" class="form-label">Diastolic (mm[Hg])</label>
+                  <label for="bpDiastolic" class="form-label">Diastólica (mm[Hg])</label>
                   <input type="number" class="form-control" id="bpDiastolic" v-model.number="newVisitForm.bloodPressureMeasurement!.diastolicMagnitude" required>
                 </div>
                 <div class="mb-3">
-                  <label for="bpLocation" class="form-label">Location</label>
+                  <label for="bpLocation" class="form-label">Ubicación</label>
                   <select class="form-select" id="bpLocation" v-model="newVisitForm.bloodPressureMeasurement!.location" required>
-                    <option value="Right arm">Right Arm</option>
-                    <option value="Left arm">Left Arm</option>
-                    <option value="Other">Other</option>
+                    <option value="Right arm">Brazo Derecho</option>
+                    <option value="Left arm">Brazo Izquierdo</option>
+                    <option value="Other">Otro</option>
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label for="bpMeasurementTime" class="form-label">Measurement Date and Time</label>
+                  <label for="bpMeasurementTime" class="form-label">Fecha y Hora de la Medición</label>
                   <input type="datetime-local" class="form-control" id="bpMeasurementTime" v-model="newVisitForm.bloodPressureMeasurement!.date" required>
                 </div>
               </div>
               <button type="submit" class="btn btn-success" :disabled="visitStore.loading">
-                {{ visitStore.loading ? 'Saving...' : 'Save Visit' }}
+                {{ visitStore.loading ? 'Guardando...' : 'Guardar Visita' }}
               </button>
             </form>
           </div>

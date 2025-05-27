@@ -60,3 +60,9 @@ export const emptyPatient: FhirPatient = {
   gender: 'unknown',
   birthDate: '',
 }
+export interface PatientResponseBackend {
+  nationalId: string;
+  fhirId?: string;
+  ehrId?: string; // Añadir ehrId
+  fhirPatientJson: string;
+}

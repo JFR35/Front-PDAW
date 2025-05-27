@@ -1,8 +1,9 @@
 // src/stores/visitStore.ts
 import { defineStore } from 'pinia';
 import api from '@/services/apiService';
-import type { VisitRequestFrontend, VisitResponseBackend, Visit } from '@/types/VisitTyped';
+import type { VisitRequestFrontend, VisitResponseBackend, Visit, BloodPressureFlatResponse, BloodPressureMeasurement } from '@/types/VisitTyped';
 import { AxiosError } from 'axios';
+import { usePatientStore } from './patientStore';
 
 interface VisitState {
   visits: Visit[];
@@ -11,7 +12,31 @@ interface VisitState {
   error: string | null;
 }
 
-function mapVisitResponseToVisit(backendDto: VisitResponseBackend): Visit {
+async function fetchBloodPressureMeasurement(compositionId: string, ehrId: string): Promise<BloodPressureMeasurement | null> {
+  try {
+    // Extraer el UUID del compositionId (sin ::local.ehrbase.org::1)
+    const uuid = compositionId.split('::')[0];
+    // Llamar al endpoint correcto
+    const response = await api.get<BloodPressureFlatResponse>(`/v1/blood-pressure/${ehrId}/composition/${uuid}?format=FLAT`);
+    const flatData = response.data;
+
+    // Mapear la respuesta FLAT a BloodPressureMeasurement
+    return {
+      date: flatData['blood_pressure/blood_pressure/any_event:0/time'],
+      systolicMagnitude: flatData['blood_pressure/blood_pressure/any_event:0/systolic|magnitude'],
+      systolicUnit: flatData['blood_pressure/blood_pressure/any_event:0/systolic|unit'],
+      diastolicMagnitude: flatData['blood_pressure/blood_pressure/any_event:0/diastolic|magnitude'],
+      diastolicUnit: flatData['blood_pressure/blood_pressure/any_event:0/diastolic|unit'],
+      location: flatData['blood_pressure/blood_pressure/location_of_measurement|value'],
+      measuredBy: flatData['blood_pressure/composer|name'],
+    };
+  } catch (error: any) {
+    console.error(`Error fetching blood pressure measurement for composition ${compositionId}:`, error);
+    return null;
+  }
+}
+
+function mapVisitResponseToVisit(backendDto: VisitResponseBackend, measurement?: BloodPressureMeasurement): Visit {
   return {
     uuid: backendDto.visitUuid,
     patientNationalId: backendDto.patientNationalId,
@@ -19,6 +44,8 @@ function mapVisitResponseToVisit(backendDto: VisitResponseBackend): Visit {
     practitionerName: backendDto.practitionerName,
     date: new Date(backendDto.visitDate),
     bloodPressureCompositionId: backendDto.bloodPressureCompositionId,
+    bloodPressureMeasurement: measurement,
+    ehrId: backendDto.ehrId, // Incluir ehrId si está disponible
   };
 }
 
@@ -36,7 +63,11 @@ export const useVisitStore = defineStore('visitStore', {
       this.error = null;
       try {
         const response = await api.post<VisitResponseBackend>('/visits', requestData);
-        const newVisit = mapVisitResponseToVisit(response.data);
+        let measurement: BloodPressureMeasurement | undefined;
+        if (response.data.bloodPressureCompositionId && response.data.ehrId) {
+          measurement = await fetchBloodPressureMeasurement(response.data.bloodPressureCompositionId, response.data.ehrId);
+        }
+        const newVisit = mapVisitResponseToVisit(response.data, measurement);
         this.visits.push(newVisit);
         this.currentVisit = newVisit;
         return newVisit;
@@ -60,7 +91,11 @@ export const useVisitStore = defineStore('visitStore', {
       this.error = null;
       try {
         const response = await api.get<VisitResponseBackend>(`/visits/${visitUuid}`);
-        const fetchedVisit = mapVisitResponseToVisit(response.data);
+        let measurement: BloodPressureMeasurement | undefined;
+        if (response.data.bloodPressureCompositionId && response.data.ehrId) {
+          measurement = await fetchBloodPressureMeasurement(response.data.bloodPressureCompositionId, response.data.ehrId);
+        }
+        const fetchedVisit = mapVisitResponseToVisit(response.data, measurement);
         this.currentVisit = fetchedVisit;
         return fetchedVisit;
       } catch (error: any) {
@@ -84,7 +119,23 @@ export const useVisitStore = defineStore('visitStore', {
       this.error = null;
       try {
         const response = await api.get<VisitResponseBackend[]>(`/visits/patient/${patientNationalId}`);
-        this.visits = response.data.map(mapVisitResponseToVisit);
+        const patientStore = usePatientStore();
+        // Obtener el ehrId desde patientStore (ajusta según cómo almacenes ehrId)
+        const patient = patientStore.patients.find(p => p.identifier?.[0]?.value === patientNationalId);
+        const ehrId = patient?.ehrId; // Asume que ehrId está en FhirPatient, ajusta si es necesario
+
+        this.visits = await Promise.all(
+          response.data.map(async (backendDto) => {
+            let measurement: BloodPressureMeasurement | undefined;
+            if (backendDto.bloodPressureCompositionId && ehrId) {
+              measurement = await fetchBloodPressureMeasurement(backendDto.bloodPressureCompositionId, ehrId);
+              if (!measurement) {
+                console.warn(`No blood pressure measurement found for composition ${backendDto.bloodPressureCompositionId}`);
+              }
+            }
+            return mapVisitResponseToVisit(backendDto, measurement);
+          })
+        );
         return this.visits;
       } catch (error: any) {
         this.error =
