@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/authStore'
 import PatientsView from '@/pages/PatientsView.vue'
 import AppoinmentView from '@/pages/AppoinmentView.vue'
 import ConfigView from '@/pages/AdminUsers.vue'
-import FhirProfilePractitionerView from '@/pages/FhirProfilePractitionerView.vue'
+import FhirProfilePractitionerView from '@/pages/ProfilePractitionerView.vue'
 
 //import ForgotPassword from '@/pages/ForgotPassword.vue'
 
