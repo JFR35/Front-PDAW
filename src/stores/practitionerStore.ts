@@ -62,7 +62,7 @@ export const usePractitionerStore = defineStore('practitionerStore', {
           })
           .filter((practitioner): practitioner is FhirPractitioner => practitioner !== null);
         if (this.practitioners.length === 0) {
-          this.error = 'No valid practitioners found in the database.';
+          this.error = 'No disponemos de pacientes en nuestra base de datos.';
         }
       } catch (error: any) {
         this.error =

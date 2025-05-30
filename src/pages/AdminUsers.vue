@@ -43,6 +43,20 @@ const validateForm = (): boolean => {
     errorMessage.value = 'La contraseña es requerida para nuevos usuarios';
     return false;
   }
+  if(!formData.value.email.includes('@')) {
+    errorMessage.value = 'El email debe ser válido';
+    return false;
+  }
+  if (formData.value.password && formData.value.password.length < 8) {
+    errorMessage.value = 'La contraseña debe tener al menos 8 caracteres';
+    return false;
+  }
+  // Validación de email único, se podría mejorar con una llamada al backend
+  const existingUser = userStore.medicUsers.find(user => user.email === formData.value.email && user.userId !== editingUserId.value);
+  if (existingUser) {
+    errorMessage.value = 'Ya existe un médico con este email';
+    return false;
+  }
   return true;
 };
 

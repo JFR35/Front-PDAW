@@ -44,6 +44,19 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useVisitStore } from '@/stores/visitStore';
 
+// Define the BloodPressureMeasurement type
+type BloodPressureMeasurement = {
+  date: string;
+  systolicMagnitude: number;
+  diastolicMagnitude: number;
+};
+
+// Define the VisitWithBloodPressure type if not imported from elsewhere
+type VisitWithBloodPressure = {
+  bloodPressureMeasurement?: BloodPressureMeasurement;
+  // Add other properties as needed
+};
+
 const router = useRouter();
 const visitStore = useVisitStore();
 
@@ -122,62 +135,85 @@ onMounted(async () => {
     loading.value = true;
     error.value = null;
 
-    // Usar las visitas ya cargadas en visitStore
-    // Extraer mediciones de presión arterial de todas las visitas
-    const measurements = visitStore.visits
-      .filter(visit => visit.bloodPressureMeasurement)
-      .map(visit => ({
-        date: visit.bloodPressureMeasurement!.date,
-        systolicMagnitude: visit.bloodPressureMeasurement!.systolicMagnitude,
-        diastolicMagnitude: visit.bloodPressureMeasurement!.diastolicMagnitude,
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    if (measurements.length === 0) {
+    // Verifica primero si hay visitas cargadas
+    if (!visitStore.visits || visitStore.visits.length === 0) {
+      console.warn('No hay visitas cargadas en el store');
       return;
     }
 
-    const labels = measurements.map(m =>
-      new Date(m.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
-    );
-    const systolic = measurements.map(m => m.systolicMagnitude);
-    const diastolic = measurements.map(m => m.diastolicMagnitude);
+    // Extraer y filtrar mediciones válidas
+    const measurements = visitStore.visits
+      .filter((visit: VisitWithBloodPressure) => {
+        const bp = visit.bloodPressureMeasurement;
+        return bp &&
+               bp.date &&
+               typeof bp.systolicMagnitude === 'number' &&
+               typeof bp.diastolicMagnitude === 'number';
+      })
+      .map((visit: VisitWithBloodPressure) => ({
+        date: new Date(visit.bloodPressureMeasurement!.date),
+        systolic: visit.bloodPressureMeasurement!.systolicMagnitude,
+        diastolic: visit.bloodPressureMeasurement!.diastolicMagnitude,
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Ajustar rango dinámico del eje Y
-    const maxSystolic = Math.max(...systolic);
-    const minDiastolic = Math.min(...diastolic);
-    const padding = 20;
+    console.log('Mediciones filtradas:', measurements); // Debug
 
-    chartOptions.value.scales!.y = {
-      title: { display: true, text: 'mmHg' },
-      min: Math.max(0, minDiastolic - padding),
-      max: maxSystolic + padding,
+    if (measurements.length === 0) {
+      console.warn('No hay mediciones de presión arterial válidas');
+      return;
+    }
+
+    // Formatear etiquetas
+    const labelOptions: Intl.DateTimeFormatOptions = {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
     };
 
+    const labels = measurements.map(m =>
+      m.date.toLocaleDateString('es-ES', labelOptions)
+    );
+
+    const systolic = measurements.map(m => m.systolic);
+    const diastolic = measurements.map(m => m.diastolic);
+
+    // Calcular rangos del eje Y
+    const maxValue = Math.max(...systolic, ...diastolic);
+    const minValue = Math.min(...systolic, ...diastolic);
+    const padding = 20;
+
+    // Actualizar datos del gráfico
     chartData.value = {
       labels,
       datasets: [
         {
-          label: 'Presión Sistólica (mmHg)',
-          backgroundColor: '#dc3545',
-          borderColor: '#dc3545',
+          ...chartData.value.datasets[0],
           data: systolic,
-          fill: false,
-          tension: 0.3,
         },
         {
-          label: 'Presión Diastólica (mmHg)',
-          backgroundColor: '#0d6efd',
-          borderColor: '#0d6efd',
+          ...chartData.value.datasets[1],
           data: diastolic,
-          fill: false,
-          tension: 0.3,
         },
       ],
     };
+
+    // Actualizar opciones del gráfico
+    chartOptions.value = {
+      ...chartOptions.value,
+      scales: {
+        ...chartOptions.value.scales,
+        y: {
+          title: { display: true, text: 'mmHg' },
+          min: Math.max(0, minValue - padding),
+          max: maxValue + padding,
+        },
+      },
+    };
+
   } catch (err) {
-    console.error('Error al cargar datos de presión arterial:', err);
-    error.value = 'No se pudieron cargar los datos de presión arterial';
+    console.error('Error al cargar datos:', err);
+    error.value = 'Error al cargar los datos de presión arterial';
   } finally {
     loading.value = false;
   }

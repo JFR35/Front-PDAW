@@ -149,6 +149,7 @@ onMounted(() => {
 
 <style scoped>
 .dashboard-container {
+  position: relative;
   padding: 4.5rem;
   border-radius: 12px;
   background-color: #f8f8f8;
@@ -156,6 +157,21 @@ onMounted(() => {
   margin: 0 auto;
 }
 
+.dashboard-container::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/src/assets/img/tension.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.7;
+  z-index: -1;
+  pointer-events: none;
+}
 .dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -187,7 +203,6 @@ onMounted(() => {
   background-color: var(--bs-gray-100);
 }
 
-/* Section styles */
 .dashboard-section {
   margin-top: 2.5rem;
 }
@@ -212,14 +227,12 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-/* Card grid */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
-/* Card styles */
 .card {
   border-radius: 12px;
   border: 1px solid var(--bs-border-color);
@@ -272,7 +285,6 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
-/* Icon circle */
 .icon-circle {
   display: flex;
   align-items: center;
@@ -285,7 +297,6 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-/* Card variants */
 .card-profile .icon-circle {
   background-color: rgba(13, 110, 253, 0.1);
   color: #0d6efd;
@@ -380,7 +391,7 @@ onMounted(() => {
   }
 }
 
-/* Responsive adjustments */
+/* Responsive*/
 @media (max-width: 768px) {
   .dashboard-header {
     flex-direction: column;
