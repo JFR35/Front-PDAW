@@ -18,7 +18,7 @@ onMounted(() => {
 <template>
 
   <div class="dashboard-container">
-    <!-- Header with action area -->
+    <!-- SubHeader -->
     <header class="dashboard-header">
       <div>
         <h1 class="dashboard-title">Dashboard</h1>
@@ -26,7 +26,7 @@ onMounted(() => {
       </div>
     </header>
 
-    <!-- Practitioner section -->
+    <!-- Cards con las acciones -->
     <section v-if="auth.isPractitioner" class="dashboard-section">
       <h2 class="section-title">Acciones Rápidas</h2>
       <div class="card-grid">
@@ -39,7 +39,7 @@ onMounted(() => {
               </div>
               <h3 class="card-title">Mi Perfil</h3>
             </div>
-            <p class="card-text">Completa tu información de facultativo</p>
+            <p class="card-text">Completa tu información profesional</p>
             <router-link to="/dashboard/practitioner" class="btn btn-card" aria-label="Ver perfil de facultativo">
               Ver Perfil <i class="bi bi-arrow-right"></i>
             </router-link>
@@ -71,9 +71,12 @@ onMounted(() => {
               </div>
               <h3 class="card-title">Visitas</h3>
             </div>
+            <!-- Cargar número de citas pendientes, no está funcionando-->
             <p class="card-text">
               <template v-if="!isLoading">
-                Próximas citas: <strong>{{ upcomingAppointments }}</strong>
+                Próximas citas:
+                Asignación de citas pendientes
+                <strong>{{ upcomingAppointments }}</strong>
               </template>
               <template v-else>
                 <span class="placeholder col-6"></span>
@@ -94,7 +97,7 @@ onMounted(() => {
               </div>
               <h3 class="card-title">Pacientes</h3>
             </div>
-            <p class="card-text">Gestiona tus observaciones</p>
+            <p class="card-text">Gestiona tus pacientes</p>
             <router-link to="/dashboard/pacientes" class="btn btn-card" aria-label="Ver lista de pacientes">
               Ver Pacientes <i class="bi bi-arrow-right"></i>
             </router-link>
@@ -103,7 +106,7 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Admin section -->
+    <!-- Sección Card del administrado -->
     <section v-if="auth.isAdmin" class="dashboard-section">
       <h2 class="section-title">Administración</h2>
       <div class="card-grid">
@@ -123,7 +126,7 @@ onMounted(() => {
           </div>
         </article>
 
-        <!-- Additional admin cards can be added here -->
+        <!-- Aún no incorpora funcionalidad, la idea es que sea para auditoria -->
         <article class="card card-stats">
           <div class="card-body">
             <div class="card-header">
@@ -145,7 +148,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Base styles */
 .dashboard-container {
   padding: 4.5rem;
   border-radius: 12px;

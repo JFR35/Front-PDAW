@@ -1,20 +1,19 @@
-// src/types/VisitTyped.ts (Ensure these interfaces are correct)
-
+// Estructura de datos para interfaz para la medición de presión arterial
 export interface BloodPressureMeasurement {
-  date?: string; // ISO 8601 string, e.g., "2025-05-27T10:00:00Z"
+  date?: string;
   systolicMagnitude?: number;
-  systolicUnit: string; // "mm[Hg]"
+  systolicUnit: string;
   diastolicMagnitude?: number;
-  diastolicUnit: string; // "mm[Hg]"
+  diastolicUnit: string;
   location?: string;
-  measuredBy?: string; // Name of the practitioner or who took the measurement
+  measuredBy?: string;
 }
 
+// Estructura de datos para la solicitud de visita
 export interface VisitRequestFrontend {
   patientNationalId: string;
   practitionerNationalId: string;
-  visitDate?: string; // Optional, ISO 8601 format
-  bloodPressureMeasurement?: BloodPressureMeasurement; // Optional, if the visit includes a measurement
+  visitDate?: string;
+  bloodPressureMeasurement?: BloodPressureMeasurement;
 }
 
-// ... other VisitResponseBackend, Visit interfaces as defined previously

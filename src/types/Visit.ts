@@ -1,14 +1,15 @@
-// src/types/VisitTyped.ts
+// Interfaz para la solicitud de medición de presión sanguínea de visita
 export interface BloodPressureMeasurement {
-  date: string; // ISO 8601 string, e.g., "2025-05-21T10:30:00Z"
+  date: string; // En formato ISO 8601
   systolicMagnitude: number;
-  systolicUnit: string; // "mm[Hg]"
+  systolicUnit: string;
   diastolicMagnitude: number;
-  diastolicUnit: string; // "mm[Hg]"
+  diastolicUnit: string;
   location: string;
   measuredBy: string;
 }
 
+// Interfaz para la solicitud de visita al backend
 export interface VisitRequestFrontend {
   patientNationalId: string;
   practitionerNationalId: string;
@@ -16,6 +17,7 @@ export interface VisitRequestFrontend {
   bloodPressureMeasurement?: BloodPressureMeasurement;
 }
 
+// Interfaz para la respuesta de visita desde el backend
 export interface VisitResponseBackend {
   visitUuid: string;
   patientNationalId: string;
@@ -26,7 +28,7 @@ export interface VisitResponseBackend {
   ehrId?: string; // Añadido para incluir el ehrId si está disponible
 }
 
-// Interfaz para la respuesta en formato FLAT desde el endpoint /blood-pressure
+// Interfaz para la respuesta en formato FLAT que es como JSON desde el endpoint /blood-pressure
 export interface BloodPressureFlatResponse {
   'blood_pressure/category|code': string;
   'blood_pressure/category|value': string;
@@ -44,7 +46,6 @@ export interface BloodPressureFlatResponse {
   'blood_pressure/blood_pressure/method|value': string;
   'blood_pressure/composer|name': string;
   'blood_pressure/_uid': string;
-  // Otros campos opcionales pueden ignorarse
 }
 
 export interface Visit {

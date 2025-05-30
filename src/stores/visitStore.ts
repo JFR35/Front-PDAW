@@ -1,25 +1,37 @@
-// src/stores/visitStore.ts
 import { defineStore } from 'pinia';
 import api from '@/services/apiService';
 import type { VisitRequestFrontend, VisitResponseBackend, Visit, BloodPressureFlatResponse, BloodPressureMeasurement } from '@/types/VisitTyped';
 import { AxiosError } from 'axios';
 import { usePatientStore } from './patientStore';
 
+
+/**
+ * @interface VisitState
+ * @description Define la estructura del estado de las visitas en el store Pinia.
+ */
 interface VisitState {
   visits: Visit[];
   currentVisit: Visit | null;
-  loading: boolean;
-  error: string | null;
+  loading: boolean; // Indica si se está cargando información
+  error: string | null; // Mensaje de error si ocurre un problema
 }
 
+/**
+ * @function fetchBloodPressureMeasurement
+ * @description Obtiene la medición de presión sanguínea asociada a una composición específica.
+ * @param {string} compositionId - El ID de la composición de presión sanguínea.
+ * @param {string} ehrId - El ID del EHR asociado a la composición.
+ * @returns {Promise<BloodPressureMeasurement | null>} - La medición de presión sanguínea o null si no se encuentra.
+ * @param compositionId
+ * @param ehrId
+ * @returns
+ */
 async function fetchBloodPressureMeasurement(compositionId: string, ehrId: string): Promise<BloodPressureMeasurement | null> {
   try {
     // Extraer el UUID del compositionId (sin ::local.ehrbase.org::1)
     const uuid = compositionId.split('::')[0];
-    // Llamar al endpoint correcto
     const response = await api.get<BloodPressureFlatResponse>(`/v1/blood-pressure/${ehrId}/composition/${uuid}?format=FLAT`);
     const flatData = response.data;
-
     // Mapear la respuesta FLAT a BloodPressureMeasurement
     return {
       date: flatData['blood_pressure/blood_pressure/any_event:0/time'],
@@ -35,6 +47,13 @@ async function fetchBloodPressureMeasurement(compositionId: string, ehrId: strin
     return null;
   }
 }
+/**
+ * @function mapVisitResponseToVisit
+ * @description Esta función auxiliar mapea un DTO de la respuesta de visita del backend a un objeto Visit.
+ * @param {VisitResponseBackend} backendDto
+ * @param {BloodPressureMeasurement}measurement
+ * @returns {Visit} El objeto Visit mapeado listo para usar en el Store de Pinia.
+ */
 
 function mapVisitResponseToVisit(backendDto: VisitResponseBackend, measurement?: BloodPressureMeasurement): Visit {
   return {
@@ -45,10 +64,14 @@ function mapVisitResponseToVisit(backendDto: VisitResponseBackend, measurement?:
     date: new Date(backendDto.visitDate),
     bloodPressureCompositionId: backendDto.bloodPressureCompositionId,
     bloodPressureMeasurement: measurement,
-    ehrId: backendDto.ehrId, // Incluir ehrId si está disponible
+    ehrId: backendDto.ehrId, // Incluir ehrId de la composición si está disponible
   };
 }
 
+/**
+ * @store visitStore
+ * @description Store de Pinia para manejar el estado de las visitas médicas.
+ */
 export const useVisitStore = defineStore('visitStore', {
   state: (): VisitState => ({
     visits: [],
@@ -56,7 +79,10 @@ export const useVisitStore = defineStore('visitStore', {
     loading: false,
     error: null,
   }),
-
+  /**
+   * @action createVisitWithBloodPressure
+   * @description Crea una nueva visita médica con medición de presión sanguínea.
+   */
   actions: {
     async createVisitWithBloodPressure(requestData: VisitRequestFrontend): Promise<Visit | null> {
       this.loading = true;
@@ -71,7 +97,7 @@ export const useVisitStore = defineStore('visitStore', {
         this.visits.push(newVisit);
         this.currentVisit = newVisit;
         return newVisit;
-      } catch (error: any) {
+      } catch (error: any) { // Creo que el problema es por ESLint
         this.error =
           (error instanceof AxiosError && error.response?.data?.message) ||
           'Error al crear la visita.';
@@ -82,6 +108,12 @@ export const useVisitStore = defineStore('visitStore', {
       }
     },
 
+    /**
+     * @action getVisitByUuid
+     * @description Obtiene una visita médica por su UUID.
+     * @param {string} visitUuid - Es el UIID de la visita a buscar.
+     * @returns {Promise<Visit | null>} - La visita encontrada o null si no se encuentra.
+     */
     async getVisitByUuid(visitUuid: string): Promise<Visit | null> {
       if (!visitUuid) {
         this.error = 'Visit UUID is required.';
@@ -108,7 +140,12 @@ export const useVisitStore = defineStore('visitStore', {
         this.loading = false;
       }
     },
-
+    /**
+     * @action getVisitsByPatientNationalId
+     * @description Obtiene todas las visitas médicas asociadas a un paciente por su National ID.
+     * @param {string} patientNationalId - El National ID del paciente.
+     * @returns {Promise<Visit[] | null>} - Lista de visitas del paciente o null si ocurre un error.
+     */
     async getVisitsByPatientNationalId(patientNationalId: string): Promise<Visit[] | null> {
       if (!patientNationalId || patientNationalId === 'N/A') {
         this.error = 'Patient National ID is required and must be valid.';

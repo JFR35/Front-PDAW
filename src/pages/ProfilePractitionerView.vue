@@ -8,7 +8,6 @@ import type { FhirPractitioner } from '@/types/PractitionerTyped';
 const qualificationOptions = [
   { code: 'MD', display: 'Doctor of Medicine', system: 'http://terminology.hl7.org/CodeSystem/v2-0360' },
   { code: 'RN', display: 'Registered Nurse', system: 'http://terminology.hl7.org/CodeSystem/v2-0360' },
-  { code: 'DDS', display: 'Dentist', system: 'http://terminology.hl7.org/CodeSystem/v2-0360' },
   { code: 'NP', display: 'Nurse Practitioner', system: 'http://terminology.hl7.org/CodeSystem/v2-0360' },
 ];
 
