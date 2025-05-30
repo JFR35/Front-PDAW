@@ -1,3 +1,4 @@
+// Vista para la administración de médicos
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
@@ -9,6 +10,7 @@ const userStore = useUserStore();
 const authStore = useAuthStore();
 const router = useRouter();
 
+// Definición de los datos para el formulario de registro de usuario
 const formData = ref<Omit<User, 'userId' | 'roles'>>({
   firstName: '',
   lastName: '',
@@ -21,6 +23,7 @@ const errorMessage = ref<string>('');
 const successMessage = ref<string>('');
 const isSubmitting = ref<boolean>(false);
 
+// Validación del formulario antes de enviar, refactorizar para evitar duplicación de código
 const validateForm = (): boolean => {
   errorMessage.value = '';
 
@@ -43,13 +46,15 @@ const validateForm = (): boolean => {
   return true;
 };
 
+// Manejo del envío del formulario
 const handleSubmit = async () => {
   if (!validateForm()) return;
   if (!authStore.isLoggedIn || !authStore.isAdmin) {
     errorMessage.value = 'Debe ser administrador para realizar esta acción';
-    router.push('/login');
+    router.push('/login'); // Redirigir al login si no está autenticado
     return;
   }
+  // Evitar envios mas de una vez
   isSubmitting.value = true;
 
   try {
@@ -67,6 +72,7 @@ const handleSubmit = async () => {
       successMessage.value = 'Médico registrado correctamente';
     }
 
+    // Reinicio del form y carga de usuarios ya registrados
     resetForm();
     await userStore.loadMedicUsers();
   } catch (error: unknown) {
@@ -75,7 +81,7 @@ const handleSubmit = async () => {
     isSubmitting.value = false;
   }
 };
-
+// Funciones para editar y eliminar usuarios
 const editUser = (user: User) => {
   editingUserId.value = user.userId;
   formData.value = {
@@ -102,7 +108,7 @@ const deleteUser = async (userId: number) => {
     }
   }
 };
-
+// Esta función reinicia el formulario y los mensajes de error o éxito
 const resetForm = () => {
   editingUserId.value = null;
   formData.value = {
@@ -112,12 +118,12 @@ const resetForm = () => {
     password: '',
   };
   errorMessage.value = '';
-  setTimeout(() => successMessage.value = '', 3000);
+  setTimeout(() => successMessage.value = '', 3000); // Limpiar mensaje de éxito después de 3 segundos
 };
-
+// Verificar si el usuario está autenticado y además es administrador
 onMounted(() => {
   if (!authStore.isLoggedIn || !authStore.isAdmin) {
-    router.push('/login');
+    router.push('/login'); // Redirigir al login si no está autenticado
   } else {
     userStore.loadMedicUsers();
   }
@@ -125,7 +131,7 @@ onMounted(() => {
 </script>
 <template>
   <div class="admin-container">
-    <!-- Breadcrumb -->
+    <!-- Breadcrumb o migas de pan para volver atrás-->
     <div class="container-fluid py-3 bg-light border-bottom">
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
@@ -140,11 +146,9 @@ onMounted(() => {
         </ol>
       </nav>
     </div>
-
-    <!-- Main Content -->
     <div class="container-fluid py-4">
       <div class="row g-4">
-        <!-- Form Column -->
+        <!-- Formulario -->
         <div class="col-xl-5 col-lg-6">
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 py-3">
@@ -154,7 +158,7 @@ onMounted(() => {
               </h4>
             </div>
             <div class="card-body pt-1">
-              <!-- Alert Messages -->
+              <!-- Mensajes de alerta -->
               <div v-if="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
                 {{ errorMessage }}
@@ -167,7 +171,7 @@ onMounted(() => {
                 <button type="button" class="btn-close" @click="successMessage = ''"></button>
               </div>
 
-              <!-- Form -->
+              <!-- Formulario campos -->
               <form @submit.prevent="handleSubmit" class="needs-validation" novalidate>
                 <div class="row g-3">
                   <div class="col-md-6">
@@ -273,7 +277,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- List Column -->
+        <!-- Mostrar listado de médicos, convendría añadir pagínacion y elementos de ordenación y búsqueda -->
         <div class="col-xl-7 col-lg-6">
           <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
@@ -287,7 +291,7 @@ onMounted(() => {
             </div>
 
             <div class="card-body p-0">
-              <!-- Loading State -->
+              <!-- Bootstrap para mensajes "cargando"  -->
               <div v-if="userStore.loading" class="d-flex justify-content-center align-items-center py-5">
                 <div class="text-center">
                   <div class="spinner-border text-primary mb-3" role="status">
@@ -297,14 +301,14 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Empty State -->
+              <!-- Mensaje si no hay médicos registrados -->
               <div v-else-if="userStore.medicUsers.length === 0" class="d-flex flex-column justify-content-center align-items-center py-5 text-center">
                 <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
                 <h5 class="mt-3 text-muted">No hay médicos registrados</h5>
                 <p class="text-muted">Comience agregando un nuevo médico</p>
               </div>
 
-              <!-- Data Table -->
+              <!-- Tabla de listar medicos, las acciones dirigen al modal -->
               <div v-else class="table-container">
                 <table class="table table-hover align-middle mb-0">
                   <thead class="table-light sticky-top">
@@ -355,6 +359,8 @@ onMounted(() => {
     </div>
   </div>
 
+
+  <!-- Ejemplo de paginación-->
   <nav aria-label="Page navigation example">
   <ul class="pagination">
     <li class="page-item">

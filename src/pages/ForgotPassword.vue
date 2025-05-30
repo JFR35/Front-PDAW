@@ -1,5 +1,5 @@
 <script lang="ts">
-
+// Pendiente de implementación para resetear la contraseña
 </script>
 
 <template>

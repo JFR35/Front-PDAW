@@ -1,6 +1,7 @@
 <script lang="ts" setup>
+// Componente BaseModal.vue
 defineProps<{ visible: boolean }>()
-defineEmits(['close'])
+defineEmits(['close']) //
 </script>
 <template>
   <div v-if="visible" class="modal-backdrop d-flex align-items-center justify-content-center">

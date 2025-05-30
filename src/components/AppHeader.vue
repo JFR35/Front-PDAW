@@ -1,10 +1,14 @@
+<!-- Template para el estilo global del Header-->
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 
+// Importa el store de autenticación
 const router = useRouter()
+// Importa el store de autenticación el nombre de usuario y la función de cierre de sesión
 const auth = useAuthStore()
 
+// Función que maneja el cierre de sesión
 const logout = () => {
   auth.logout()
   router.push('/')
@@ -31,7 +35,7 @@ const logout = () => {
 <style scoped>
 .app-header {
   background-color: white;
-  z-index: 1030; /* Bootstrap's fixed z-index + 1 */
+  z-index: 1030;
   border-bottom: 1px solid #e0e0e0;
 }
 

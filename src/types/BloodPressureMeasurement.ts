@@ -3,20 +3,20 @@
  * Refleja el BloodPressureMeasurementDto.java
  */
 export interface BloodPressureMeasurement {
-  date: string; // O Date si prefieres convertirlo a objeto Date en el frontend
+  date: string; // Habría que cambiarlo a Date las fechas están dando problemas.
   systolicMagnitude: number;
   systolicUnit: string;
   diastolicMagnitude: number;
   diastolicUnit: string;
   location: string;
-  measuredBy?: string; // Opcional, si se implementa en el backend
+  measuredBy?: string;
 }
 export interface BloodPressureRecordRequest {
   visitLocalId: number;
   patientLocalId: number;
   practitionerLocalId: number;
   location: string;
-  measurementTime: string; // O Date, si manejas la conversión en frontend
+  measurementTime: string; // Puesto en String daba problemas con el backend
   systolic: number;
   diastolic: number;
   meanArterialPressure?: number;

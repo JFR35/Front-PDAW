@@ -1,4 +1,4 @@
-// src/stores/entityStore.ts
+// Clase de prueba para el store de pacientes y profesionales de la salud
 import { defineStore } from 'pinia';
 
 interface Patient {
@@ -16,6 +16,7 @@ interface EntityState {
   practitioners: Practitioner[];
 }
 
+// Carga los pacientes y profesionales de la salud
 export const useEntityStore = defineStore('entityStore', {
   state: (): EntityState => ({
     patients: [
@@ -27,14 +28,6 @@ export const useEntityStore = defineStore('entityStore', {
   }),
 
   actions: {
-    // Add API calls if needed, e.g.:
-    // async loadPatients() {
-    //   const response = await api.get<Patient[]>('/patients');
-    //   this.patients = response.data;
-    // }
-    // async loadPractitioners() {
-    //   const response = await api.get<Practitioner[]>('/practitioners');
-    //   this.practitioners = response.data;
-    // }
+
   },
 });

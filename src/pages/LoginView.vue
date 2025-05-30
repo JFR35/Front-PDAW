@@ -80,6 +80,7 @@ const handleLogin = async () => {
           </button>
 
           <div class="forgot-password">
+            <!-- Enlace a la página de recuperación de contraseña, pendiente de implementar -->
             <router-link to="/forgot-password">¿Olvidaste tu contraseña?</router-link>
           </div>
         </form>

@@ -1,15 +1,17 @@
-// src/components/AppointmentView.vue
+// Vista para la administración de visitras medicas incluyendo la medición
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useVisitStore } from '@/stores/visitStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { usePractitionerStore } from '@/stores/practitionerStore';
 import type { VisitRequestFrontend } from '@/types/VisitTyped';
+// import type { VisitRequestFrontend } from '@/types/Visit';
 
 const visitStore = useVisitStore();
 const patientStore = usePatientStore();
 const practitionerStore = usePractitionerStore();
 
+// Definición del formulario para la nueva visita, contemplar usar sweet alert UXD amigable
 const newVisitForm = ref<VisitRequestFrontend>({
   patientNationalId: '',
   practitionerNationalId: '',
@@ -30,7 +32,7 @@ const includeBloodPressure = ref(false);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const filterPatientNationalId = ref<string>('');
-
+// Carga los pacientes y profesionales al montar el componente
 onMounted(async () => {
   try {
     await Promise.all([
@@ -62,6 +64,7 @@ onMounted(async () => {
   }
 });
 
+// Modal para añadir una nueva visita
 const openAddVisitModal = () => {
   const now = new Date().toISOString().slice(0, 16);
   Object.assign(newVisitForm.value, {
@@ -76,12 +79,13 @@ const openAddVisitModal = () => {
       measuredBy: '',
     },
   });
+
   includeBloodPressure.value = false;
   errorMessage.value = null;
   successMessage.value = null;
   showAddVisitModal.value = true;
 };
-
+ // Manejador de envío del formulario de nueva visita
 const handleSubmit = async () => {
   errorMessage.value = null;
   successMessage.value = null;
@@ -149,6 +153,7 @@ const handleSubmit = async () => {
   }
 };
 
+// Filtrar visitas por paciente nacional ID
 const filterVisitsByPatient = async () => {
   if (filterPatientNationalId.value) {
     await visitStore.getVisitsByPatientNationalId(filterPatientNationalId.value);
@@ -158,6 +163,7 @@ const filterVisitsByPatient = async () => {
   }
 };
 
+// Establecer el formato de fecha y hora
 const formatDateTime = (dateTimeString: string) => {
   if (!dateTimeString) return 'N/A';
   const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -166,6 +172,7 @@ const formatDateTime = (dateTimeString: string) => {
 </script>
 
 <template>
+  <!-- SubHeader con menu breadcrumbs-->
   <div class="container py-4">
     <h2>Calendario de Visitas</h2>
     <nav aria-label="breadcrumb" class="mb-4">
@@ -179,9 +186,9 @@ const formatDateTime = (dateTimeString: string) => {
 
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div class="form-group">
-        <label for="filterPatient">Filtrar por DNI/NIE del Paciente:</label>
+        <label for="filterPatient">Filtrar por DNI/NIE del Paciente</label>
         <select class="form-select" id="filterPatient" v-model="filterPatientNationalId" @change="filterVisitsByPatient">
-          <option value="">-- Seleccionar Paciente --</option>
+          <option value="">Seleccionar Paciente</option>
           <option v-for="patient in patientStore.patients" :key="patient.id" :value="patient.identifier?.[0]?.value">
             {{ patient.identifier?.[0]?.value }} - {{ patient.name?.[0]?.given?.[0] }} {{ patient.name?.[0]?.family }}
           </option>
@@ -193,6 +200,7 @@ const formatDateTime = (dateTimeString: string) => {
       </button>
     </div>
 
+    <!-- Mensaje tipo Spinner de cargar visitas -->
     <div v-if="visitStore.loading" class="text-center p-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Cargando...</span>
@@ -206,13 +214,13 @@ const formatDateTime = (dateTimeString: string) => {
 
     <div v-else>
       <div v-if="visitStore.visits.length === 0 && filterPatientNationalId" class="text-center p-5">
-        <h5 class="text-muted">No hay visitas registradas para el paciente {{ filterPatientNationalId }}.</h5>
+        <h5 class="text-muted">No hay visitas programadas para el paciente {{ filterPatientNationalId }}.</h5>
         <button @click="openAddVisitModal" class="btn btn-primary mt-3">
           Programar Primera Visita
         </button>
       </div>
       <div v-else-if="visitStore.visits.length === 0 && !filterPatientNationalId" class="text-center p-5">
-        <h5 class="text-muted">Por favor, seleccione un paciente para ver las visitas.</h5>
+        <h5 class="text-muted">Por favor, seleccione un paciente para ver las visitas. programadas</h5>
       </div>
 
       <div v-else class="list-group">
@@ -224,13 +232,14 @@ const formatDateTime = (dateTimeString: string) => {
                 Dr. {{ visit.practitionerName }}
               </span>
               <span v-if="visit.bloodPressureCompositionId" class="badge bg-success">
-                Datos EHRbase
+                Datos EHRbase composicionID
               </span>
               <span v-else class="badge bg-warning text-dark">
-                Sin Medición de PA
+                Sin Medición de presión
               </span>
             </div>
           </div>
+          <!-- Aunque es poco amigable mostrar datos de EHRbase de momento ayuda a ver que se cargan bien-->
           <p class="mb-1">DNI/NIE del Paciente: <strong>{{ visit.patientNationalId }}</strong></p>
           <small class="text-muted">DNI/NIE del Profesional: {{ visit.practitionerNationalId }}</small><br>
           <small v-if="visit.bloodPressureCompositionId" class="text-muted">ID de Composición: {{ visit.bloodPressureCompositionId.substring(0, 8) }}...</small>
@@ -250,6 +259,7 @@ const formatDateTime = (dateTimeString: string) => {
       </div>
     </div>
 
+    <!-- Modal para añadir nueva visita-->
     <div v-if="showAddVisitModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -289,6 +299,8 @@ const formatDateTime = (dateTimeString: string) => {
                 <label for="visitDate" class="form-label">Fecha y Hora de la Visita</label>
                 <input type="datetime-local" class="form-control" id="visitDate" v-model="newVisitForm.visitDate" required>
               </div>
+              <!-- En caso de que la visita ya esté programa añadir medición, esto se deberia manejar de otra forma, separando citas
+               de visitas -->
               <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="includeBloodPressure" v-model="includeBloodPressure">
                 <label class="form-check-label" for="includeBloodPressure">Incluir Medición de Presión Arterial</label>

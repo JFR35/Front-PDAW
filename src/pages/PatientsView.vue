@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
-//import { useAuthStore } from '@/stores/authStore';
+// import { useAuthStore } from '@/stores/authStore';
 import { usePatientStore } from '@/stores/patientStore';
 import type { FhirPatient } from '@/types/PatientTyped';
 import { emptyPatient } from '@/types/PatientTyped';
-//import { AxiosError } from 'axios';
+// import { AxiosError } from 'axios';
 
 const patientStore = usePatientStore();
 //const authStore = useAuthStore(); // De momento la autenticación esta sin protección.
@@ -145,6 +145,7 @@ const currentAge = computed(() => {
 </script>
 
 <template>
+  <!-- BreadCrumbs-->
   <div class="patient-container">
     <div class="container-fluid py-3 bg-light border-bottom">
       <nav aria-label="breadcrumb">
@@ -218,6 +219,7 @@ const currentAge = computed(() => {
               </button>
             </div>
 
+            <!-- Form agregar patient-->
             <div v-else class="table-container">
               <table class="table table-hover align-middle mb-0">
                 <thead class="table-light sticky-top">

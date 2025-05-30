@@ -1,7 +1,5 @@
-// src/types/PractitionerTyped.ts
-
 /**
- * Define la estructura estándar de un identificador en FHIR (reutilizable).
+ * Define la estructura estándar de un identificador en FHIR (Identifier).
  */
 export interface Identifier {
   system: string;
@@ -10,7 +8,7 @@ export interface Identifier {
 }
 
 /**
- * Define la estructura estándar de un nombre humano en FHIR (reutilizable).
+ * Define la estructura estándar de un nombre humano en FHIR (FHIR Human Name).
  */
 export interface HumanName {
   use?: 'usual' | 'official' | 'temp' | 'nickname' | 'anonymous' | 'old' | 'maiden';
@@ -21,7 +19,7 @@ export interface HumanName {
 }
 
 /**
- * Define la estructura estándar de una cualificación de Practitioner en FHIR.
+ * Define la estructura estándar de una cualificación del Practitioner en FHIR.
  */
 export interface PractitionerQualification {
   id?: string;
@@ -33,12 +31,11 @@ export interface PractitionerQualification {
     }[];
     text?: string;
   };
-  // Puedes añadir más campos de cualificación si tu SD los usa
 }
 
 /**
- * Representa un recurso de FHIR Practitioner.
- * Define la estructura estándar de un profesional de la salud.
+ * Representa el recurso de FHIR Practitioner.
+ * Define la estructura estándar de un profesional de la salud acorde a nuestro StructureDefinition.
  */
 export interface FhirPractitioner {
   resourceType: 'Practitioner';
@@ -46,31 +43,30 @@ export interface FhirPractitioner {
   meta?: {
     profile?: string[];
   };
-  identifier?: Identifier[]; // Puede ser opcional dependiendo de tu SD
-  name?: HumanName[]; // Puede ser opcional
+  identifier?: Identifier[];
+  name?: HumanName[];
   gender?: 'male' | 'female' | 'other' | 'unknown';
   birthDate?: string;
-  qualification?: PractitionerQualification[]; // Para la especialidad
-  // Añade otros campos relevantes de FHIR Practitioner si los usas (telecom, address, etc.)
+  qualification?: PractitionerQualification[]; // Array para almacenar la especialidad
 }
 
 /**
  * Representa la respuesta de un profesional desde el backend (PractitionerResponseDTO de Java).
- * Contiene tanto los metadatos del EMPI como la cadena JSON del recurso FHIR Practitioner.
+ * Contiene los metadatos del EMPI como la cadena JSON del recurso FHIR Practitioner.
  */
 export interface PractitionerResponseBackend {
-  id: string; // ID interno del EMPI (Long en Java, pero puede ser string en TS si es UUID o si se convierte)
-  nationalId: string; // DNI/NIE
-  fhirId: string; // ID de Aidbox
-  name: string; // Nombre del profesional (del PMI)
-  specialty: string; // Especialidad (del PMI)
-  fhirPractitionerJson: string; // <--- La cadena JSON del recurso FHIR Practitioner
-  // Puedes añadir createdAt, updatedAt si los necesitas en el frontend
+  id: string; // ID interno del EMPI
+  nationalId: string; // Cambiar mejor por numero de seguridad social
+  fhirId: string; // ID de Adibox
+  name: string;
+  specialty: string;
+  fhirPractitionerJson: string; //La cadena JSON del recurso FHIR Practitioner
   createdAt?: string;
   updatedAt?: string;
+  // Se podrían añadir más campos como createdAt, updatedAt para auditoria interna.
 }
 
-// Para crear un nuevo profesional en el formulario (si no usas el FHIR JSON directamente)
+// Para crear un nuevo profesional en el formulario
 export const emptyPractitioner: FhirPractitioner = {
   resourceType: 'Practitioner',
   identifier: [{ system: '', value: '' }],

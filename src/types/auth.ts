@@ -1,7 +1,5 @@
-// src/types/auth.ts
-
 /**
- * Interfaz para definir la estructura de un usuario en la aplicación.
+ * Interfaz para definir la estructura de datos de un usuario
  */
 export interface User {
   userId?: number;

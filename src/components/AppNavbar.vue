@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Lógica del navbar si es necesaria
+// Añadir lang="ts" para TypeScript
+// Lógica del navbar si es necesaria de momento no
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 /**
- * Interfaz para definit la estructura de un usuario en la aplicación,
+ * Interfaz para definir la estructura de un usuario en la aplicación,
  * incluye campos obligatorios y opciones (?)
  * Este tipado se importa a otros archivos como userStore.ts y la vista
  * AdminUsers.ts para garantizar que los datos manipulados cumplan con

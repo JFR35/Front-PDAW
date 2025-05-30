@@ -1,21 +1,33 @@
-// src/stores/practitionerStore.ts
+// Definición del store para gestionar profesionales de la salud
 import { defineStore } from 'pinia';
 import api from '@/services/apiService';
 import type { FhirPractitioner, PractitionerResponseBackend } from '@/types/PractitionerTyped';
 import { AxiosError } from 'axios';
 
+// Definicion del estado
 interface PractitionerState {
-  practitioners: FhirPractitioner[];
-  loading: boolean;
-  error: string | null;
+  practitioners: FhirPractitioner[]; // Listar profesionales de la salud
+  loading: boolean; // Estado de carga para solicitudes
+  error: string | null; // Mensaje de error si ocurre un problema
 }
 
+/**
+ * @description Función para validar un objeto FhirPractitioner.
+ * @action validatePractitioner
+ * @param practitioner - Recibe un objeto FhirPractitioner para validar.
+ * @returns ture si el objeto es válido o false si no lo es.
+ */
 function validatePractitioner(practitioner: FhirPractitioner): boolean {
+  // Verificar campos obligatorios según FHIR Practitioner
   if (!practitioner.identifier || practitioner.identifier.length === 0 || !practitioner.identifier[0].value) return false;
   if (!practitioner.name || practitioner.name.length === 0 || !practitioner.name[0].family || !practitioner.name[0].given || practitioner.name[0].given.length === 0) return false;
   return true;
 }
 
+/**
+ * @description Store de Pinia para gestionar profesionales de la salud.
+ *
+ */
 export const usePractitionerStore = defineStore('practitionerStore', {
   state: (): PractitionerState => ({
     practitioners: [],
@@ -23,6 +35,7 @@ export const usePractitionerStore = defineStore('practitionerStore', {
     error: null,
   }),
 
+  // Carga los profesionales de la salud desde el backend
   actions: {
     async loadPractitioners() {
       this.loading = true;
@@ -61,6 +74,11 @@ export const usePractitionerStore = defineStore('practitionerStore', {
       }
     },
 
+    /**
+     * @description Funcion asíncrona para crear un nuevo profesional de la salud.
+     * @param practitionerData - Recicibe objeto FhirPractitioner
+     * @returns - Devuelve el profesional creado o si es error devuelve null.
+     */
     async createPractitioner(practitionerData: FhirPractitioner): Promise<FhirPractitioner | null> {
       this.loading = true;
       this.error = null;
@@ -97,6 +115,11 @@ export const usePractitionerStore = defineStore('practitionerStore', {
       }
     },
 
+    /**
+     * @description Obtener profesional de la salud por su National ID.
+     * @param nationalId - Recice el nationalId por parametro
+     * @returns
+     */
     async getPractitionerByNationalId(nationalId: string): Promise<FhirPractitioner | null> {
       this.loading = true;
       this.error = null;
@@ -124,6 +147,7 @@ export const usePractitionerStore = defineStore('practitionerStore', {
       }
     },
 
+    // Metodo para actualizar un profesional de la salud
     async updatePractitioner(nationalId: string, practitionerData: FhirPractitioner): Promise<FhirPractitioner | null> {
       this.loading = true;
       this.error = null;
@@ -155,6 +179,7 @@ export const usePractitionerStore = defineStore('practitionerStore', {
       }
     },
 
+    // Metodo para eliminar un profesional de la salud
     async deletePractitioner(nationalId: string): Promise<void> {
       this.loading = true;
       this.error = null;
